@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoinSwitch Scanner · Backtest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/common.css">
+</head>
+<body>
+
+<header>
+  <div class="logo"><em>CS</em> Scanner<small>Backtest</small></div>
+  <div class="spacer"></div>
+  <a class="navlink" href="/">← Scanner</a>
+  <div class="hctl"><span id="keyDot"></span><span id="keyTxt">checking keys…</span></div>
+  <button class="btn ghost sm" id="themeToggle" title="Toggle light/dark theme">🌙</button>
+</header>
+
+<main class="main">
+
+  <div class="card" id="viewBanner" style="display:none">
+    <h2>Viewing saved backtest</h2>
+    <div class="row" style="justify-content:space-between">
+      <div id="viewBannerText" class="sentence" style="margin:0;flex:1"></div>
+      <a class="btn ghost sm" href="/static/backtest.html">+ New backtest</a>
+    </div>
+  </div>
+
+  <div id="builderSection">
+    <div class="card">
+      <h2>Build filter</h2>
+      <div class="row" style="margin-bottom:12px">
+        <div class="fld"><span class="lbl">Universe ⓘ</span>
+          <select id="universe" title="Which market to scan.
+Futures (perps) = USDT perpetual contracts — where most small caps trade.
+Spot = c2c1/c2c2/coinswitchx spot pairs.
+Spot + Futures = everything; spot preferred when a coin exists on both.">
+            <option value="futures" selected>Futures (perps)</option>
+            <option value="spot">Spot</option>
+            <option value="all">Spot + Futures</option>
+          </select>
+        </div>
+        <div class="fld"><span class="lbl">Preset ⓘ</span>
+          <select id="preset" title="Ready-made filters — same ones as the main scanner. Loads conditions below, edit them freely afterwards.">
+            <option value="">— custom —</option>
+            <option value="pvspike" selected>Price Volume Spike</option>
+            <option value="pvspike5m">Price Volume Spike (5m)</option>
+            <option value="trendvolspike5m">Trending Volume Spike (5m)</option>
+          </select>
+        </div>
+        <div class="fld"><span class="lbl">Candle ⓘ</span>
+          <select id="interval" title="Timeframe every condition works on.">
+            <option value="1">1m</option><option value="5">5m</option>
+            <option value="15">15m</option><option value="30">30m</option>
+            <option value="60" selected>1h</option><option value="240">4h</option><option value="1440">1d</option>
+          </select>
+        </div>
+        <div class="fld"><span class="lbl">Lookback ⓘ</span>
+          <select id="lookbackDays" title="How far back to walk, at the Candle interval above. A backtest needs this history to find past signals to simulate trades on.">
+            <option value="1">Last 1 day</option>
+            <option value="2">Last 2 days</option>
+            <option value="3" selected>Last 3 days</option>
+            <option value="5">Last 5 days</option>
+            <option value="7">Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </div>
+        <div class="fld"><span class="lbl">Take profit (R) ⓘ</span><input type="number" id="targetRR" value="" min="0.1" step="0.1" style="width:80px" placeholder="none" title="Optional take-profit target, in multiples of your risk (SL distance).
+e.g. 4 = exit at 1:4 — 4x your SL distance above entry. 1 = 1:1, 5 = 1:5, any number.
+Leave blank to skip a fixed target and just track the max price reached (SL-only exit) — the previous behavior.
+Trades that hit neither the target nor the SL yet are marked OPEN with their current unrealized R."></div>
+        <div class="fld"><span class="lbl">Trail to breakeven ⓘ</span>
+          <label class="hctl" style="gap:6px;height:32px">
+            <input type="checkbox" id="trailBE" style="width:auto" title="Once a trade reaches 1:1 (1R profit), move the stop-loss up to entry (cost-to-cost).
+If price later comes back and stops out there, it's a scratch — RR = 0, status BREAKEVEN — not counted as a loss.
+Works whether or not you've set a Take profit above.">
+            1R → SL to entry
+          </label>
+        </div>
+        <div class="fld"><span class="lbl">Scan top N ⓘ</span><input type="number" id="topN" value="50" min="5" max="400" title="Universe size: scans the N highest-volume pairs."></div>
+        <div class="fld"><span class="lbl">Min 24h vol (millions $) ⓘ</span><input type="number" id="minVol" value="10" min="0" step="0.01" style="width:110px" title="Value is in MILLIONS of USDT."></div>
+        <div class="fld"><span class="lbl">Max 24h vol (millions $) ⓘ</span><input type="number" id="maxVol" value="" min="0" step="0.01" style="width:110px" placeholder="none" title="Value is in MILLIONS of USDT. Leave blank for no cap."></div>
+        <div class="fld"><span class="lbl">Min 24h % change ⓘ</span><input type="number" id="minChange" value="5" step="0.1" style="width:90px" placeholder="none" title="Only include pairs whose 24h % change is at least this value. Leave blank for no filter."></div>
+        <div class="fld"><span class="lbl">Match ⓘ</span>
+          <select id="logic" title="ALL = every condition must be true at the same time (AND).
+ANY = at least one condition true (OR).">
+            <option value="all" selected>ALL conditions</option><option value="any">ANY condition</option></select>
+        </div>
+        <div class="fld"><span class="lbl">Candle used ⓘ</span>
+          <select id="lastClosed" title="Forming (live) = signal candle can still be building.
+Last closed = only fully completed candles — no repaint, the standard choice for a backtest.">
+            <option value="0">Forming (live)</option><option value="1" selected>Last closed</option></select>
+        </div>
+      </div>
+
+      <div class="sentence" style="margin-bottom:10px" id="methodNote">
+Long-only simulation, per signal: <b>Entry</b> = signal candle's close · <b>Stop-loss</b> = signal candle's low.
+A trade is <b>LOSS</b> (RR = −1R) the moment a candle's low touches the stop. Without a <b>Take profit (R)</b> set,
+a trade that never gets stopped stays <b>OPEN</b> — its <b>RR</b> is the live unrealized R multiple from entry to the
+current price. Set a Take profit (e.g. 4 for 1:4) and a trade instead becomes <b>WIN</b> (RR = the target) once a
+candle's high reaches it. <b>Max RR</b> is separate from RR — it's the best R multiple ever reached before the stop,
+target, or "now", so you can see "stopped for −1R, but it touched +2.3R first" or "still open at +0.4R, but peaked
+at +1.8R". Check <b>1R → SL to entry</b> to move the stop to breakeven once a trade reaches 1:1 — a later stop-out
+there is a <b>BREAKEVEN</b> scratch (RR = 0), not counted as a loss. A signal with very few candles elapsed since it
+fired hasn't had time to play out — read cautiously.
+      </div>
+
+      <div id="conds"></div>
+
+      <div class="row" style="margin-top:6px">
+        <button class="btn ghost sm" id="addCond" title="Add another condition row (combined with ALL/ANY above)">+ Add condition</button>
+      </div>
+
+      <div class="sentence" id="sentence"></div>
+
+      <div class="row">
+        <button class="btn" id="runBtn">▶ Run backtest</button>
+        <div class="spacer" style="flex:1"></div>
+        <span id="status"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="summaryCard" style="display:none">
+    <h2>Summary</h2>
+    <div class="stats">
+      <div class="stat"><div class="v" id="sTotal">—</div><div class="k">Signals</div></div>
+      <div class="stat"><div class="v up" id="sWins">—</div><div class="k">Wins</div></div>
+      <div class="stat"><div class="v down" id="sLosses">—</div><div class="k">Losses</div></div>
+      <div class="stat" id="sBETile" style="display:none"><div class="v mut" id="sBE">—</div><div class="k">Breakeven</div></div>
+      <div class="stat" id="sOpenTile" style="display:none"><div class="v" id="sOpen">—</div><div class="k">Open</div></div>
+      <div class="stat"><div class="v" id="sWinRate">—</div><div class="k">Win rate</div></div>
+      <div class="stat"><div class="v" id="sAvgRR">—</div><div class="k">Avg RR (settled)</div></div>
+      <div class="stat" id="sAvgOpenRRTile" style="display:none"><div class="v" id="sAvgOpenRR">—</div><div class="k">Avg RR (open, live)</div></div>
+      <div class="stat"><div class="v up" id="sAvgMaxRR">—</div><div class="k">Avg Max RR</div></div>
+      <div class="stat"><div class="v" id="sAvgMove">—</div><div class="k">Avg % move</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="tradesCard" style="display:none">
+    <h2>Trades<button class="btn ghost sm" id="dlBacktestCsv" style="float:right" title="Download every trade as CSV">⬇ CSV</button></h2>
+    <div class="res-wrap">
+      <table id="tradesTable">
+        <thead><tr>
+          <th>Signal time (IST)</th><th>Pair</th><th>Entry</th><th>SL</th><th>Max price</th><th>Max RR</th>
+          <th>SL hit</th><th>Target hit</th><th>Current</th><th>Result</th><th>RR</th><th>% move</th><th>Bars since</th>
+        </tr></thead>
+        <tbody id="tradesBody"><tr><td colspan="13" class="empty">Run a backtest to see trades.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="saveCard" style="display:none">
+    <h2>Save this backtest</h2>
+    <div class="row">
+      <input id="saveName" placeholder="Name (e.g. Price Volume Spike)" style="width:260px" title="Saved under this name, versioned automatically — saving again under the same name keeps both versions for comparison.">
+      <button class="btn ghost sm" id="saveBacktestBtn">Save version</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Saved backtests</h2>
+    <div id="btCards" class="btcards"><div class="empty">No saved backtests yet — run one above, then Save it to compare against others here.</div></div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/common.js"></script>
+<script>
+/* ============================ preset wiring ============================ */
+$('#addCond').addEventListener('click',()=>condRow());
+$('#interval').addEventListener('change',updateSentence);
+$('#logic').addEventListener('change',updateSentence);
+$('#preset').addEventListener('change', e=>loadPreset(e.target.value));
+
+/* ============================ run backtest ============================ */
+function backtestConfig(){
+  const cfg = buildScanConfig();   // includes lookback_days since #lookbackDays exists on this page
+  const trgRaw = $('#targetRR').value.trim();
+  cfg.target_rr = trgRaw!=='' ? +trgRaw : null;
+  cfg.trail_to_breakeven = $('#trailBE').checked;
+  return cfg;
+}
+
+const RESULT_DISPLAY_CAP = 500;
+let lastResult = null;
+
+async function runBacktest(){
+  const cfg = backtestConfig();
+  if(!cfg.conditions.length) return toast('Add at least one condition', true);
+  const btn = $('#runBtn');
+  $('#tradesBody').innerHTML = '<tr><td colspan="13" class="empty">Running backtest…</td></tr>';
+  $('#tradesCard').style.display = '';
+  $('#summaryCard').style.display = 'none';
+  $('#saveCard').style.display = 'none';
+  const t0 = Date.now();
+  btn.disabled = true;
+  const tick = setInterval(()=>{
+    const s = Math.round((Date.now()-t0)/1000);
+    btn.textContent = `▶ Running… ${s}s`;
+    $('#status').innerHTML = `running… <span class="mut">${s}s${s>10?' — futures pairs are rate-limited upstream (28 candle req/min); a cold-cache run can take up to a minute, repeats are fast':''}</span>`;
+  }, 1000);
+  try{
+    const j = await api('/api/backtest', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg)});
+    lastResult = j;
+    $('#status').innerHTML =
+      `scanned ${j.scanned} pairs · <span class="hit">${j.signals} signals</span> · ${(j.took_ms/1000).toFixed(1)}s`
+      + (j.truncated ? ` · <span class="down">⚠ truncated at cap</span>` : '')
+      + (j.errors.length ? ` · <span class="down" style="cursor:help" title="${j.errors.map(e=>`${e.symbol}: ${e.error}`).join('\n')}">${j.errors.length} errors</span>` : '');
+    renderSummary(j.summary);
+    renderTrades(j.trades);
+    $('#saveCard').style.display = j.trades.length ? '' : 'none';
+  }catch(e){
+    $('#status').textContent = '';
+    toast('Backtest failed: '+e.message, true);
+    $('#tradesBody').innerHTML = '<tr><td colspan="13" class="empty">Backtest failed — see the error toast.</td></tr>';
+  }
+  clearInterval(tick);
+  btn.textContent = '▶ Run backtest';
+  btn.disabled = false;
+}
+$('#runBtn').addEventListener('click', runBacktest);
+
+function renderSummary(s){
+  $('#summaryCard').style.display = '';
+  $('#sTotal').textContent = s.total;
+  $('#sWins').textContent = s.wins;
+  $('#sLosses').textContent = s.losses;
+  const hasBE = (s.breakevens||0) > 0;
+  $('#sBETile').style.display = hasBE ? '' : 'none';
+  if(hasBE) $('#sBE').textContent = s.breakevens;
+  const hasOpen = (s.open||0) > 0;
+  $('#sOpenTile').style.display = hasOpen ? '' : 'none';
+  if(hasOpen) $('#sOpen').textContent = s.open;
+  $('#sAvgOpenRRTile').style.display = hasOpen ? '' : 'none';
+  if(hasOpen){
+    $('#sAvgOpenRR').textContent = (s.avg_open_rr>=0?'+':'')+(s.avg_open_rr??0).toFixed(2)+'R';
+    $('#sAvgOpenRR').className = 'v ' + (s.avg_open_rr>0?'up':s.avg_open_rr<0?'down':'');
+  }
+  $('#sWinRate').textContent = (s.wins+s.losses) ? s.win_rate.toFixed(1)+'%' : '—';
+  $('#sAvgRR').textContent = (s.wins+s.losses) ? (s.avg_rr>=0?'+':'')+s.avg_rr.toFixed(2)+'R' : '—';
+  $('#sAvgRR').className = 'v ' + (s.avg_rr>0?'up':s.avg_rr<0?'down':'');
+  $('#sAvgMaxRR').textContent = s.total ? '+'+(s.avg_max_rr??0).toFixed(2)+'R' : '—';
+  $('#sAvgMove').textContent = s.total ? '+'+s.avg_pct_move.toFixed(2)+'%' : '—';
+}
+
+function statusCls(t){
+  if(t.status) return t.status==='win'?'up':t.status==='loss'?'down':t.status==='breakeven'?'mut':'warn';
+  return t.is_win?'up':'down';
+}
+function statusLbl(t){
+  if(t.status) return t.status==='win'?'WIN':t.status==='loss'?'LOSS':t.status==='breakeven'?'BREAKEVEN':'OPEN';
+  return t.is_win?'WIN':'LOSS';
+}
+
+function renderTrades(trades){
+  if(!trades.length){
+    $('#tradesBody').innerHTML = '<tr><td colspan="13" class="empty">No signals found in this lookback window — loosen a condition, widen the universe, or extend the lookback.</td></tr>';
+    return;
+  }
+  const shown = trades.slice(-RESULT_DISPLAY_CAP).reverse();
+  $('#tradesBody').innerHTML = shown.map(t=>`<tr>
+      <td class="mut">${isoIST(t.signal_time)}</td>
+      <td class="sym">${t.symbol}${t.exchange==='futures'?'<span class="perp">PERP</span>':''}</td>
+      <td>${fmtP(t.entry)}</td>
+      <td class="down">${fmtP(t.sl)}</td>
+      <td class="up">${fmtP(t.max_price)}</td>
+      <td class="${t.max_rr==null?'mut':t.max_rr>0?'up':'down'}">${t.max_rr==null?'—':(t.max_rr>=0?'+':'')+t.max_rr.toFixed(2)+'R'}</td>
+      <td class="${t.sl_hit?'down':'mut'}">${t.sl_hit?'true':'false'}</td>
+      <td class="${t.target_hit?'up':'mut'}">${t.target_hit?'true':'false'}</td>
+      <td>${fmtP(t.current_price)}</td>
+      <td class="${statusCls(t)}">${statusLbl(t)}</td>
+      <td class="${t.rr==null?'mut':t.rr>0?'up':'down'}">${t.rr==null?'—':(t.rr>=0?'+':'')+t.rr.toFixed(2)+'R'}</td>
+      <td class="up">${pct2(t.pct_move)}%</td>
+      <td class="mut" title="Candles elapsed since this signal fired — very low means it's too early to call">${t.bars_after_signal}</td>
+    </tr>`).join('');
+  if(trades.length>RESULT_DISPLAY_CAP){
+    $('#tradesBody').insertAdjacentHTML('afterbegin',
+      `<tr><td colspan="13" class="empty">Showing latest ${RESULT_DISPLAY_CAP} of ${trades.length} — download CSV for all.</td></tr>`);
+  }
+}
+
+$('#dlBacktestCsv').addEventListener('click', ()=>{
+  const trades = lastResult?.trades||[];
+  if(!trades.length) return toast('No trades to download yet', true);
+  const cols = [
+    {label:'signal_time_ist', get:t=>isoIST(t.signal_time)}, {label:'signal_time_epoch_ms', get:t=>t.signal_time},
+    {label:'symbol', get:t=>t.symbol}, {label:'exchange', get:t=>t.exchange},
+    {label:'entry', get:t=>t.entry}, {label:'sl', get:t=>t.sl}, {label:'max_price', get:t=>t.max_price},
+    {label:'max_rr', get:t=>t.max_rr==null?'':t.max_rr.toFixed(4)},
+    {label:'sl_hit', get:t=>t.sl_hit}, {label:'sl_hit_time_ist', get:t=>t.sl_hit_time?isoIST(t.sl_hit_time):''},
+    {label:'target_hit', get:t=>t.target_hit}, {label:'target_hit_time_ist', get:t=>t.target_hit_time?isoIST(t.target_hit_time):''},
+    {label:'breakeven_triggered', get:t=>t.breakeven_triggered??''},
+    {label:'breakeven_triggered_time_ist', get:t=>t.breakeven_triggered_time?isoIST(t.breakeven_triggered_time):''},
+    {label:'current_price', get:t=>t.current_price}, {label:'result', get:t=>statusLbl(t)},
+    {label:'rr', get:t=>t.rr==null?'':t.rr.toFixed(4)}, {label:'pct_move', get:t=>t.pct_move.toFixed(4)},
+    {label:'bars_after_signal', get:t=>t.bars_after_signal},
+  ];
+  downloadCSV(toCSV(trades, cols), `backtest-${Date.now()}.csv`);
+});
+
+/* ============================ save (auto-versioned) ============================ */
+$('#saveBacktestBtn').addEventListener('click', async ()=>{
+  const name = $('#saveName').value.trim();
+  if(!name) return toast('Give this backtest a name', true);
+  if(!lastResult) return toast('Run a backtest first', true);
+  try{
+    const j = await api('/api/backtests', {method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name, config:backtestConfig(), result:lastResult})});
+    toast(`Saved "${name}" v${j.version}`);
+    $('#saveName').value = '';
+    loadSavedBacktests();
+  }catch(e){ toast('Save failed: '+e.message, true); }
+});
+
+/* ============================ saved backtests — card grid ============================ */
+async function loadSavedBacktests(){
+  let j; try{ j = await api('/api/backtests'); }catch(e){ return; }
+  const wrap = $('#btCards');
+  if(!j.backtests.length){
+    wrap.innerHTML = '<div class="empty">No saved backtests yet — run one above, then Save it to compare against others here.</div>';
+    return;
+  }
+  wrap.innerHTML = j.backtests.map(b=>{
+    const s = b.summary||{};
+    const itv = INTERVAL_LABELS[b.interval] || (b.interval+'m');
+    const rr = (s.avg_rr>=0?'+':'')+(s.avg_rr??0).toFixed(2)+'R';
+    const rrCls = s.avg_rr>0?'up':s.avg_rr<0?'down':'mut';
+    return `<div class="btcard" data-id="${encodeURIComponent(b.id)}">
+      <button class="btn ghost sm del" data-id="${encodeURIComponent(b.id)}" data-name="${b.name}" title="Delete this saved backtest">✕</button>
+      <div class="name">${b.name} <span class="mut">v${b.version}</span></div>
+      <div class="meta">${itv} · last ${b.lookback_days}d · ${new Date(b.saved_at).toLocaleDateString('en-IN')}</div>
+      <div class="row2"><span class="big ${rrCls}">${(s.win_rate??0).toFixed(0)}%</span><span class="mut">win rate</span></div>
+      <div class="row2"><span class="mut">${s.wins??0}W / ${s.losses??0}L · ${s.total??0} trades</span><span class="${rrCls}">${rr}</span></div>
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('.btcard').forEach(card=>card.addEventListener('click', e=>{
+    if(e.target.closest('.del')) return;
+    location.href = '/static/backtest.html?view=' + card.dataset.id;
+  }));
+  wrap.querySelectorAll('.del').forEach(b=>b.addEventListener('click', async e=>{
+    e.stopPropagation();
+    if(!confirm(`Delete saved backtest "${b.dataset.name}"? This cannot be undone.`)) return;
+    await api('/api/backtests/'+b.dataset.id, {method:'DELETE'});
+    toast(`Deleted "${b.dataset.name}"`);
+    loadSavedBacktests();
+  }));
+}
+
+/* ============================ view mode (?view=id) ============================ */
+async function initViewMode(id){
+  let b; try{ b = await api('/api/backtests/'+encodeURIComponent(id)); }catch(e){
+    toast('Could not load that saved backtest: '+e.message, true); return;
+  }
+  $('#builderSection').style.display = 'none';
+  $('#saveCard').style.display = 'none';
+  $('#viewBanner').style.display = '';
+  $('#viewBannerText').innerHTML = `<b>${b.name}</b> v${b.version} — saved ${new Date(b.saved_at).toLocaleString('en-IN',{hour12:false})}<br>${summarizeConfig(b.config).replace(/\n/g,'<br>')}`;
+  lastResult = b.result;
+  renderSummary(b.result.summary);
+  renderTrades(b.result.trades);
+  $('#tradesCard').style.display = '';
+}
+
+const viewId = new URLSearchParams(location.search).get('view');
+if(viewId){ initViewMode(viewId); } else { loadPreset('pvspike'); }
+loadSavedBacktests();
+</script>
+</body>
+</html>

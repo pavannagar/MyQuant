@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: coinswitch-scanner
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: COINSWITCH_API_KEY
+        sync: false
+      - key: COINSWITCH_SECRET_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: TWILIO_WHATSAPP_TO
+        sync: false
+      - key: LIVE_TRADING
+        value: "0"

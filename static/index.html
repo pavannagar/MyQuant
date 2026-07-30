@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoinSwitch Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script defer src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{
+  --bg:#0A0F1C; --panel:#101726; --panel2:#0D1420; --line:#1E2A3F; --line2:#28374F;
+  --text:#DCE3F0; --muted:#7C8AA5; --dim:#54617A;
+  --accent:#6C7CFF; --accent-dim:#3C48A8;
+  --up:#2FD182; --down:#FF5C6C; --warn:#F5B443;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --sans:'Space Grotesk',system-ui,-apple-system,Segoe UI,sans-serif;
+}
+:root[data-theme="light"]{
+  --bg:#F4F6FB; --panel:#FFFFFF; --panel2:#F1F3F9; --line:#E1E5EF; --line2:#CBD2E2;
+  --text:#1B2333; --muted:#5B6478; --dim:#8891A3;
+  --accent:#4C5FEF; --accent-dim:#C7CCF7;
+  --up:#1D9A63; --down:#DB3A4E; --warn:#B4750B;
+}
+body{transition:background-color .15s ease,color .15s ease}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  border-radius:6px;padding:6px 8px;font-size:13px;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+input[type=number]{font-family:var(--mono);width:74px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- header ---------- */
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);
+  background:var(--panel);position:sticky;top:0;z-index:20}
+.logo{font-weight:700;font-size:16px;letter-spacing:.4px}
+.logo em{font-style:normal;color:var(--accent)}
+.logo small{display:block;font-weight:400;font-size:10px;color:var(--muted);letter-spacing:1.6px;text-transform:uppercase}
+header .spacer{flex:1}
+.hctl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+#keyDot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+#keyDot.ok{background:var(--up)} #keyDot.bad{background:var(--down)}
+
+/* ---------- layout ---------- */
+.wrap{display:grid;grid-template-columns:370px 1fr;gap:0;min-height:calc(100vh - 61px)}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}.side{border-right:none;border-bottom:1px solid var(--line);max-height:340px}}
+
+/* ---------- left: market ---------- */
+.side{border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;overflow:hidden}
+.side .bar{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--line)}
+.side .bar input{flex:1}
+.mkt{overflow-y:auto;flex:1}
+table{width:100%;border-collapse:collapse}
+.mkt th{position:sticky;top:0;background:var(--panel2);z-index:5}
+th{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right;
+  padding:8px 10px;border-bottom:1px solid var(--line);font-weight:500;cursor:pointer;user-select:none;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:7px 8px;border-bottom:1px solid rgba(30,42,63,.5);text-align:right;font-family:var(--mono);font-size:12px;white-space:nowrap}
+tbody tr:hover{background:rgba(108,124,255,.06);cursor:pointer}
+.sym{font-family:var(--sans);font-weight:600;font-size:13px}
+.sym .q{color:var(--dim);font-weight:400}
+.perp{display:inline-block;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:5px;
+  background:rgba(245,180,67,.15);color:var(--warn);letter-spacing:.5px;vertical-align:1px}
+.up{color:var(--up)} .down{color:var(--down)}
+.mut{color:var(--muted)}
+@keyframes flashUp{0%{background:rgba(47,209,130,.28)}100%{background:transparent}}
+@keyframes flashDn{0%{background:rgba(255,92,108,.28)}100%{background:transparent}}
+td.fu{animation:flashUp 1s ease-out} td.fd{animation:flashDn 1s ease-out}
+.livebar{display:flex;align-items:center;gap:6px;padding:6px 12px;font-size:11px;color:var(--muted);
+  border-bottom:1px solid var(--line);font-family:var(--mono)}
+.livebar .dot{width:7px;height:7px;border-radius:50%;background:var(--up);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ---------- main ---------- */
+.main{padding:18px 20px;overflow-x:hidden}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:18px}
+.card h2{font-size:13px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.lbl{font-size:11px;color:var(--muted);display:block;margin-bottom:3px;letter-spacing:.4px}
+.fld{display:flex;flex-direction:column}
+
+/* condition rows */
+.cond{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);
+  border-radius:8px;margin-bottom:8px;background:var(--panel2)}
+.cond select,.cond input{font-size:12.5px;padding:5px 6px}
+.cond .op{color:var(--accent);font-family:var(--mono);font-weight:600}
+.cond .del{background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;width:26px;height:26px;line-height:1}
+.cond .del:hover{color:var(--down);border-color:var(--down)}
+.opnd{display:flex;gap:6px;align-items:center;padding:4px 8px;border:1px dashed var(--line2);border-radius:8px}
+.mini{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+
+/* the sentence strip — plain-English readout of the scan */
+.sentence{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--panel2);
+  border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:10px 12px;margin:10px 0;line-height:1.7}
+.sentence b{color:var(--text);font-weight:500}
+.sentence .and{color:var(--accent)}
+
+/* buttons */
+.btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-weight:600;font-size:13px}
+.btn:hover{background:#7d8bff}
+.btn:disabled{background:var(--accent-dim);cursor:wait}
+.btn.ghost{background:transparent;border:1px solid var(--line2);color:var(--text);font-weight:500}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn.sm{padding:6px 12px;font-size:12px}
+
+/* results */
+#status{font-family:var(--mono);font-size:12px;color:var(--muted)}
+#status .hit{color:var(--up);font-weight:600}
+.res-wrap{overflow-x:auto}
+#resTable td .chip{display:inline-block;font-size:10px;padding:2px 7px;border-radius:99px;margin-left:6px;
+  background:rgba(47,209,130,.12);color:var(--up);font-family:var(--sans)}
+.empty{padding:28px;text-align:center;color:var(--dim);font-size:13px}
+
+/* chart drawer */
+#drawer{position:fixed;right:0;top:0;bottom:0;width:min(760px,100%);background:var(--panel);
+  border-left:1px solid var(--line);transform:translateX(102%);transition:transform .25s ease;z-index:50;
+  display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.5)}
+#drawer.open{transform:none}
+#drawer .dh{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#drawer .dh h3{font-size:16px}
+.itvbtns{display:flex;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px}
+.itvbtns button{background:none;border:none;color:var(--muted);font-size:11px;padding:4px 8px;border-radius:6px;font-family:var(--mono)}
+.itvbtns button.on{background:var(--accent);color:#fff}
+#dLegend{display:flex;gap:14px;padding:8px 16px;font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  flex-wrap:wrap;border-bottom:1px solid var(--line);min-height:32px;align-items:center}
+#dLegend b{color:var(--text);font-weight:500}
+#priceChart{flex:1;min-height:280px}
+#rsiChart{height:120px;border-top:1px solid var(--line)}
+#rsiChart.hidden{display:none}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel);
+  border:1px solid var(--line2);padding:10px 18px;border-radius:8px;font-size:13px;z-index:99;display:none}
+.toast.err{border-color:var(--down);color:var(--down)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><em>CS</em> Scanner<small>CoinSwitch PRO · Spot</small></div>
+  <div class="spacer"></div>
+  <div class="hctl">Exchange
+    <select id="exchange">
+      <option value="all">All (spot + futures)</option>
+      <option value="spot">Spot only</option>
+      <option value="futures" selected>Futures (perps)</option>
+      <option value="c2c1">c2c1</option>
+      <option value="c2c2">c2c2</option>
+      <option value="coinswitchx">coinswitchx</option>
+    </select>
+  </div>
+  <div class="hctl">Quote
+    <select id="quote">
+      <option value="USDT" selected>USDT</option>
+      <option value="INR">INR</option>
+      <option value="ALL">All</option>
+    </select>
+  </div>
+  <div class="hctl"><span id="keyDot"></span><span id="keyTxt">checking keys…</span></div>
+  <a class="btn ghost sm" href="/static/backtest.html" style="text-decoration:none" title="Backtest a filter: simulate trades on every past signal, see win rate and RR">📊 Backtest</a>
+  <button class="btn ghost sm" id="themeToggle" title="Toggle light/dark theme">🌙</button>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ market panel ============ -->
+  <aside class="side">
+    <div class="bar">
+      <input id="mktSearch" placeholder="Search coin (e.g. EVAA)" autocomplete="off">
+      <button class="btn ghost sm" id="mktRefresh">↻</button>
+    </div>
+    <div class="livebar"><span class="dot"></span><span id="mktInfo">connecting…</span></div>
+    <div class="mkt">
+      <table id="mktTable">
+        <thead><tr>
+          <th data-k="symbol">Pair</th>
+          <th data-k="percentageChange">24h %</th>
+          <th data-k="quoteVolume">Vol</th>
+          <th data-k="lastPrice">Price</th>
+        </tr></thead>
+        <tbody id="mktBody"><tr><td colspan="4" class="empty">Loading market…</td></tr></tbody>
+      </table>
+    </div>
+  </aside>
+
+  <!-- ============ scanner ============ -->
+  <main class="main">
+    <div class="card">
+      <h2>Ask in plain English</h2>
+      <div class="row">
+        <input id="aiQuery" style="flex:1;min-width:260px"
+          placeholder='e.g. "price moved 5% in last 5 min and volume 20% above 20-candle average"'>
+        <button class="btn" id="aiBtn">✨ Build scanner</button>
+      </div>
+      <div class="sentence" id="aiExplain" style="display:none"></div>
+    </div>
+
+    <div class="card">
+      <h2>Build scanner</h2>
+      <div class="row" style="margin-bottom:12px">
+        <div class="fld"><span class="lbl">Universe ⓘ</span>
+          <select id="universe" title="Which market to scan.
+Futures (perps) = USDT perpetual contracts (EVAA etc.) — where most small caps trade.
+Spot = c2c1/c2c2/coinswitchx spot pairs.
+Spot + Futures = everything; spot preferred when a coin exists on both.">
+            <option value="futures" selected>Futures (perps)</option>
+            <option value="spot">Spot</option>
+            <option value="all">Spot + Futures</option>
+          </select>
+        </div>
+        <div class="fld"><span class="lbl">Preset ⓘ</span>
+          <select id="preset" title="Ready-made scanners. Loads conditions below — edit them freely afterwards.">
+            <option value="">— custom —</option>
+            <option value="pvspike" selected>Price Volume Spike</option>
+            <option value="pvspike5m">Price Volume Spike (5m)</option>
+            <option value="trendvolspike5m">Trending Volume Spike (5m)</option>
+          </select>
+        </div>
+        <div class="fld"><span class="lbl">Candle ⓘ</span>
+          <select id="interval" title="Timeframe every condition works on.
+5m = conditions read 5-minute candles; '3 candles ago' then means 15 minutes ago.">
+            <option value="1">1m</option><option value="5">5m</option>
+            <option value="15" selected>15m</option><option value="30">30m</option>
+            <option value="60">1h</option><option value="240">4h</option><option value="1440">1d</option>
+          </select>
+        </div>
+        <div class="fld"><span class="lbl">Scan top N ⓘ</span><input type="number" id="topN" value="50" min="5" max="400" title="Universe size: scans the N highest-volume pairs.
+Futures: FIRST scan is slow (CoinSwitch allows 30 candle requests/min) — about 2s per symbol cold. Repeat scans are fast (cached).
+50 is a good default; 25 for a 1-minute futures monitor."></div>
+        <div class="fld"><span class="lbl">Min 24h vol (millions $) ⓘ</span><input type="number" id="minVol" value="10" min="0" step="0.01" style="width:110px" title="Value is in MILLIONS of USDT.
+1 = $1,000,000/day · 0.5 = $500k · 0.1 = $100k · 0.01 = $10k.
+Pairs with less 24h traded value than this are skipped before scanning."></div>
+        <div class="fld"><span class="lbl">Max 24h vol (millions $) ⓘ</span><input type="number" id="maxVol" value="" min="0" step="0.01" style="width:110px" placeholder="none" title="Value is in MILLIONS of USDT. Leave blank for no cap.
+Pairs with more 24h traded value than this are skipped before scanning.
+e.g. min 100, max 1000 = only pairs trading $100M–$1000M/day."></div>
+        <div class="fld"><span class="lbl">Min 24h % change ⓘ</span><input type="number" id="minChange" value="5" step="0.1" style="width:90px" placeholder="none" title="Only include pairs whose 24h % change is at least this value.
+e.g. 20 = only pairs up 20% or more over 24h. Leave blank for no filter.
+Can be negative (e.g. -10) to exclude pairs down more than 10%.
+Combines with the volume filters above (AND) and Scan top N."></div>
+        <div class="fld"><span class="lbl">Match ⓘ</span>
+          <select id="logic" title="ALL = every condition must be true at the same time (AND).
+ANY = at least one condition true (OR).">
+            <option value="all" selected>ALL conditions</option><option value="any">ANY condition</option></select>
+        </div>
+        <div class="fld"><span class="lbl">Candle used ⓘ</span>
+          <select id="lastClosed" title="Forming (live) = evaluate the candle building right now, with live price — fastest signals, but the candle can still change ('repaint').
+Last closed = only completed candles — confirmed signals, no repaint, slightly later.">
+            <option value="0" selected>Forming (live)</option><option value="1">Last closed</option></select>
+        </div>
+        <div class="fld"><span class="lbl">Scan mode ⓘ</span>
+          <select id="scanMode" title="Live = evaluate the filter right now only, one result per pair.
+Historical = walk every candle over the lookback window below and list every pair+timestamp where the filter passed — e.g. 'which futures were trading above VWAP, checked every 5 minutes over the last day'. Slower, downloadable as CSV.">
+            <option value="live" selected>Live (now)</option>
+            <option value="history">Historical (walk every candle)</option>
+          </select>
+        </div>
+        <div class="fld" id="lookbackFld" style="display:none"><span class="lbl">Lookback ⓘ</span>
+          <select id="lookbackDays" title="How far back to walk, at the Candle interval selected above.
+1 day of 5m candles = 288 checks per pair. Upstream candle history is capped at ~1000 bars, so very short intervals over long lookbacks get truncated automatically.">
+            <option value="1" selected>Last 1 day</option>
+            <option value="2">Last 2 days</option>
+            <option value="3">Last 3 days</option>
+            <option value="5">Last 5 days</option>
+            <option value="7">Last 7 days</option>
+          </select>
+        </div>
+      </div>
+
+      <details style="margin-bottom:10px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--muted)">How conditions work — quick guide</summary>
+        <div class="sentence" style="margin-top:8px">
+Each row reads: <b>LEFT value</b> [operator] <b>× multiplier</b> <b>RIGHT value</b>.<br>
+· <b>len</b> = how many candles the indicator looks back (SMA len 20 = average of 20 candles).<br>
+· <b>ago</b> = candle offset: 0 = current candle, 1 = previous, 3 on 5m candles = 15 minutes ago.<br>
+· <b>×</b> = multiplier on the right side: 1.2 = "20% more than", 2 = "double", 0.8 = "20% less".<br>
+· <b>% dist from VWAP</b> is signed percent: +0.5 = price 0.5% above VWAP, −0.5 = below. "Near VWAP" = between −0.3 and +0.3.<br>
+· <b>crosses ↑/↓</b> = was on the other side last candle, on this side now.<br>
+Example — "volume 20% above its 20-candle average": <b>Price/Volume · volume</b> &gt; <b>× 1.2</b> <b>SMA · volume · len 20 · ago 1</b>.
+        </div>
+      </details>
+
+      <div id="conds"></div>
+
+      <div class="row" style="margin-top:6px">
+        <button class="btn ghost sm" id="addCond" title="Add another condition row (combined with ALL/ANY above)">+ Add condition</button>
+        <div class="spacer" style="flex:1"></div>
+        <input id="saveName" placeholder="Scanner name" style="width:160px" title="Name to save this scanner under. Saved scanners can run automatically in Monitors.">
+        <button class="btn ghost sm" id="saveBtn" title="Save current settings + conditions">Save</button>
+        <select id="savedList" style="min-width:140px" title="Load a previously saved scanner — hover an option to preview its conditions"><option value="">Load saved…</option></select>
+        <button class="btn ghost sm" id="delSaved" title="Delete the selected saved scanner (recoverable from Trash)">🗑</button>
+        <button class="btn ghost sm" id="trashBtn" title="View/restore deleted scanners">🗑 Trash</button>
+      </div>
+
+      <div id="trashPanel" style="display:none;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px"></div>
+
+      <div class="sentence" id="sentence"></div>
+
+      <div class="row">
+        <button class="btn" id="runBtn">▶ Run scan</button>
+        <label class="hctl" style="gap:6px"><input type="checkbox" id="autoScan" style="width:auto"> auto re-scan every 60s</label>
+        <div class="spacer" style="flex:1"></div>
+        <span id="status"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Monitors — saved scanners running on the server</h2>
+      <div id="monList" class="res-wrap"><div class="empty">Save a scanner, then enable it here to auto-scan every 1/5/15 min or hourly, aligned to the clock.</div></div>
+    </div>
+
+    <div class="card" id="liveResultsCard">
+      <h2>Results<button class="btn ghost sm" id="dlLiveCsv" style="float:right" title="Download current results as CSV (symbol, price, %, volume, candle time)">⬇ CSV</button></h2>
+      <div class="res-wrap">
+        <table id="resTable">
+          <thead><tr>
+            <th>Pair</th><th>Last price</th><th>24h %</th><th>24h vol (quote)</th>
+            <th>Candle close</th><th>Candle vol</th><th>Conditions</th>
+          </tr></thead>
+          <tbody id="resBody"><tr><td colspan="7" class="empty">Run a scan to see matches.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="histResultsCard" style="display:none">
+      <h2>Historical results — every timestamp that passed<button class="btn ghost sm" id="dlHistCsv" style="float:right" title="Download ALL matched rows as CSV (symbol, time, open, high, low, close, volume) — not just what's shown below">⬇ CSV</button></h2>
+      <div class="sentence" id="histSummary" style="display:none"></div>
+      <div class="res-wrap">
+        <table id="histTable">
+          <thead><tr>
+            <th>Time (IST)</th><th>Pair</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Volume</th>
+            <th title="% change vs the previous candle">Δ candle</th><th title="% change vs 24h before this candle">Δ 24h</th>
+          </tr></thead>
+          <tbody id="histBody"><tr><td colspan="9" class="empty">Run a historical scan to see matches.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- chart drawer -->
+<div id="drawer">
+  <div class="dh">
+    <h3 id="dTitle">—</h3>
+    <div class="itvbtns" id="dItv">
+      <button data-i="1">1m</button><button data-i="5">5m</button>
+      <button data-i="15" class="on">15m</button><button data-i="30">30m</button>
+      <button data-i="60">1h</button><button data-i="240">4h</button><button data-i="1440">1D</button>
+    </div>
+    <div class="spacer" style="flex:1"></div>
+    <label class="hctl" style="gap:4px"><input type="checkbox" id="dEma" checked style="width:auto">EMA 9/21</label>
+    <label class="hctl" style="gap:4px"><input type="checkbox" id="dVwap" checked style="width:auto">VWAP</label>
+    <label class="hctl" style="gap:4px"><input type="checkbox" id="dRsi" checked style="width:auto">RSI</label>
+    <button class="btn ghost sm" id="dClose">✕</button>
+  </div>
+  <div id="dLegend"></div>
+  <div id="priceChart"></div>
+  <div id="rsiChart"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================ helpers ============================ */
+const $ = s => document.querySelector(s);
+const el = (tag, attrs={}, html='') => { const e=document.createElement(tag);
+  Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); e.innerHTML=html; return e; };
+const fmtP = v => { if(v==null||isNaN(v)) return '—';
+  if(v>=1000) return v.toLocaleString('en-IN',{maximumFractionDigits:2});
+  if(v>=1) return v.toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+  return v.toPrecision(4); };
+const fmtV = v => { if(v==null||isNaN(v)) return '—';
+  if(v>=1e9) return (v/1e9).toFixed(2)+'B'; if(v>=1e6) return (v/1e6).toFixed(2)+'M';
+  if(v>=1e3) return (v/1e3).toFixed(1)+'K'; return v.toFixed(1); };
+const pctCls = v => v>0?'up':(v<0?'down':'mut');
+const pct2 = v => v==null||isNaN(v) ? '' : v.toFixed(2);
+let toastT;
+function toast(msg, err=false){ const t=$('#toast'); t.textContent=msg; t.className='toast'+(err?' err':'');
+  t.style.display='block'; clearTimeout(toastT); toastT=setTimeout(()=>t.style.display='none',3500); }
+async function api(path, opts){ const r = await fetch(path, opts);
+  const j = await r.json().catch(()=>({detail:'bad response'}));
+  if(!r.ok) throw new Error(j.detail || r.status); return j; }
+
+/* ============================ theme ============================ */
+(function(){
+  const root = document.documentElement;
+  const saved = localStorage.getItem('cs-theme');
+  if(saved) root.setAttribute('data-theme', saved);
+  const btn = $('#themeToggle');
+  const sync = () => { btn.textContent = root.getAttribute('data-theme')==='light' ? '☀' : '🌙'; };
+  btn.addEventListener('click', ()=>{
+    const next = root.getAttribute('data-theme')==='light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next); localStorage.setItem('cs-theme', next); sync();
+  });
+  sync();
+})();
+
+/* ============================ health ============================ */
+(async()=>{ try{ const h = await api('/api/health');
+    $('#keyDot').className = h.keys_configured ? 'ok' : 'bad';
+    $('#keyTxt').textContent = h.keys_configured ? 'keys OK' : 'keys missing';
+    if(!h.keys_configured) toast('Set COINSWITCH_API_KEY / COINSWITCH_SECRET_KEY and restart', true);
+  }catch(e){ $('#keyDot').className='bad'; $('#keyTxt').textContent='server down'; } })();
+
+/* ============================ market panel ============================ */
+let mktRows = [], mktSort = {k:'quoteVolume', dir:-1}, prevPrice = {};
+const MKT_POLL_MS = 2_000;
+
+async function loadMarket(silent=false){
+  if(!silent) $('#mktBody').innerHTML = '<tr><td colspan="4" class="empty">Loading…</td></tr>';
+  try{
+    const j = await api(`/api/pairs?exchange=${$('#exchange').value}&quote=${$('#quote').value}`);
+    mktRows = j.pairs; renderMarket();
+    const err = (j.exchange_errors||[]).map(e=>e.exchange).join(',');
+    $('#mktInfo').textContent =
+      `${j.count} pairs · ${new Date().toLocaleTimeString('en-IN',{hour12:false})}` +
+      (err ? ` · ⚠ ${err} failed` : '');
+  }catch(e){
+    if(!silent) $('#mktBody').innerHTML = `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
+    $('#mktInfo').textContent = 'refresh failed: ' + e.message;
+  }
+}
+let findT = null;
+function renderMarket(){
+  const q = $('#mktSearch').value.trim().toUpperCase();
+  let rows = mktRows.filter(r => !q || r.symbol.toUpperCase().includes(q));
+  rows.sort((a,b)=>{ const {k,dir}=mktSort;
+    return (a[k]>b[k]?1:a[k]<b[k]?-1:0)*dir; });
+  $('#mktBody').innerHTML = rows.map(r=>{
+    const [base, qt] = r.symbol.split('/');
+    const noTick = r.hasTicker === false;
+    const perp = r.exchange==='futures' ? '<span class="perp">PERP</span>' : '';
+    const prev = prevPrice[r.symbol];
+    const flash = prev==null||prev===r.lastPrice ? '' : (r.lastPrice>prev?' class="fu"':' class="fd"');
+    return `<tr data-sym="${r.symbol}" data-exch="${r.exchange||''}"${noTick?' style="opacity:.55"':''}>
+      <td class="sym">${base}<span class="q">/${qt||''}</span>${perp}</td>
+      <td class="${pctCls(r.percentageChange)}">${noTick?'—':r.percentageChange.toFixed(2)+'%'}</td>
+      <td class="mut">${noTick?'—':fmtV(r.quoteVolume)}</td>
+      <td${flash}>${noTick?'<span class="mut" title="listed, no 24h trades">—</span>':fmtP(r.lastPrice)}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" class="empty" id="noMatch">No pairs match here…</td></tr>';
+  rows.forEach(r=>prevPrice[r.symbol]=r.lastPrice);
+  // nothing locally? ask the server where CoinSwitch lists this coin
+  clearTimeout(findT);
+  if(!rows.length && q.length>=3){
+    findT = setTimeout(async ()=>{
+      try{
+        const f = await api('/api/find?q='+encodeURIComponent(q));
+        const cell = $('#noMatch'); if(!cell) return;
+        if(f.matches.length){
+          cell.innerHTML = 'Found elsewhere:<br>' + f.matches.slice(0,8).map(m=>
+            `<b>${m.symbol}</b> on ${m.exchange}${m.in_ticker?'':' (no 24h trades)'}`).join('<br>')
+            + '<br><span class="mut">switch Exchange/Quote to All to see it</span>';
+        } else {
+          cell.textContent = `"${q}" is not listed on any CoinSwitch spot exchange (check spelling — e.g. EVAA not EVVA)`;
+        }
+      }catch(e){}
+    }, 500);
+  }
+}
+$('#mktSearch').addEventListener('input', renderMarket);
+$('#mktRefresh').addEventListener('click', ()=>loadMarket());
+$('#exchange').addEventListener('change', ()=>{ prevPrice={}; loadMarket(); });
+$('#quote').addEventListener('change', ()=>{ prevPrice={}; loadMarket(); });
+document.querySelectorAll('#mktTable th').forEach(th=>th.addEventListener('click',()=>{
+  const k = th.dataset.k;
+  mktSort = { k, dir: mktSort.k===k ? -mktSort.dir : -1 }; renderMarket();
+}));
+$('#mktBody').addEventListener('click', e=>{
+  const tr = e.target.closest('tr'); if(tr && tr.dataset.sym) openChart(tr.dataset.sym, tr.dataset.exch);
+});
+loadMarket();
+setInterval(()=>{ if(!document.hidden) loadMarket(true); }, MKT_POLL_MS);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadMarket(true); });
+
+/* ============================ condition builder ============================ */
+const KINDS = [
+  ['price','Price/Volume'], ['sma','SMA'], ['ema','EMA'], ['rsi','RSI'],
+  ['highest','Highest of last N'], ['lowest','Lowest of last N'],
+  ['change_pct','% change (N candles)'], ['abs_change_pct','|% change| (N candles)'],
+  ['vwap','VWAP (day)'], ['vwap_dist','% dist from VWAP'],
+  ['turnover','Turnover $ (candle)'], ['number','Number'],
+];
+const FIELDS = ['close','open','high','low','volume'];
+const OPS = [['gt','&gt;'],['gte','&ge;'],['lt','&lt;'],['lte','&le;'],
+             ['crosses_above','crosses ↑'],['crosses_below','crosses ↓']];
+
+function opndHTML(side){
+  return `<div class="opnd" data-side="${side}">
+    <select class="k" title="What to measure:
+Price/Volume = raw candle value · SMA/EMA = moving average · RSI = 0-100 strength
+Highest/Lowest of last N = rolling extreme (breakout levels)
+% change (N candles) = percent move of close over N candles (signed: + up, − down)
+|% change| (N candles) = same, but unsigned — use with ALL match to catch a move in EITHER direction
+VWAP (day) = volume-weighted avg price since IST midnight
+% dist from VWAP = signed % of price vs VWAP (+above / −below)
+Number = a constant you type">${KINDS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
+    <select class="f" title="Which candle value the indicator uses (close is standard; volume for volume conditions)">${FIELDS.map(f=>`<option>${f}</option>`).join('')}</select>
+    <span class="mini per">len</span><input type="number" class="p" value="20" min="1" style="width:56px" title="Lookback length in candles. 20 on 5m = last 100 minutes.">
+    <span class="mini off">ago</span><input type="number" class="o" value="0" min="0" style="width:48px" title="Candle offset: 0 = current candle, 1 = previous candle, 3 on 5m = 15 minutes ago.">
+    <input type="number" class="n" value="0" step="any" style="width:86px;display:none" title="Constant to compare with. For % operands this is percent: 5 = 5%, -0.3 = minus 0.3%. For RSI: 0-100.">
+  </div>`;
+}
+function condRow(cfg){
+  const d = el('div',{class:'cond'});
+  d.innerHTML = opndHTML('L') +
+    `<select class="opsel op" title="Comparison:
+> / ≥ / < / ≤ compare values right now.
+crosses ↑ = was below (or equal) last candle, above now.
+crosses ↓ = was above (or equal) last candle, below now.">${OPS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>` +
+    `<span class="mini">×</span><input type="number" class="mult" value="1" step="any" style="width:64px" title="Multiplier on the RIGHT side: 1 = as-is, 1.2 = 20% more than right value, 2 = double, 0.8 = 20% less.">` +
+    opndHTML('R') +
+    `<button class="del" title="Remove this condition">✕</button>`;
+  d.querySelector('.del').addEventListener('click',()=>{ d.remove(); updateSentence(); });
+  d.addEventListener('change', ()=>{ d.querySelectorAll('.opnd').forEach(syncOpnd); updateSentence(); });
+  d.addEventListener('input', updateSentence);
+  if(cfg) applyCond(d,cfg);
+  d.querySelectorAll('.opnd').forEach(syncOpnd);
+  $('#conds').appendChild(d);
+  updateSentence();
+  return d;
+}
+function syncOpnd(o){
+  const k = o.querySelector('.k').value;
+  const show = (sel,on)=>{ o.querySelector(sel).style.display = on?'':'none'; };
+  show('.f', ['price','sma','ema','highest','lowest'].includes(k));
+  const hasP = ['sma','ema','rsi','highest','lowest','change_pct','abs_change_pct'].includes(k);
+  show('.p',hasP); show('.per',hasP);
+  const notNum = k!=='number';
+  show('.o',notNum); show('.off',notNum);
+  show('.n', k==='number');
+}function readOpnd(o){
+  return { kind:o.querySelector('.k').value, field:o.querySelector('.f').value,
+    period:+o.querySelector('.p').value||14, offset:+o.querySelector('.o').value||0,
+    value:+o.querySelector('.n').value||0 };
+}
+function writeOpnd(o,c){
+  o.querySelector('.k').value=c.kind; o.querySelector('.f').value=c.field||'close';
+  o.querySelector('.p').value=c.period??20; o.querySelector('.o').value=c.offset??0;
+  o.querySelector('.n').value=c.value??0; syncOpnd(o);
+}
+function readConds(){
+  return [...document.querySelectorAll('#conds .cond')].map(d=>{
+    const [L,R] = d.querySelectorAll('.opnd');
+    return { left:readOpnd(L), op:d.querySelector('.opsel').value,
+             right:readOpnd(R), mult:+d.querySelector('.mult').value||1 };
+  });
+}
+function applyCond(d,c){
+  const [L,R]=d.querySelectorAll('.opnd');
+  writeOpnd(L,c.left); writeOpnd(R,c.right);
+  d.querySelector('.opsel').value=c.op; d.querySelector('.mult').value=c.mult??1;
+}
+function opndText(c){
+  const off = c.offset>0 ? ` (${c.offset} ago)` : '';
+  switch(c.kind){
+    case 'number': return String(c.value);
+    case 'price': return `latest ${c.field}${off}`;
+    case 'rsi': return `RSI(${c.period})${off}`;
+    case 'change_pct': return `%chg over ${c.period} candles${off}`;
+    case 'abs_change_pct': return `|%chg| over ${c.period} candles${off}`;
+    case 'vwap': return `day VWAP${off}`;
+    case 'vwap_dist': return `% dist from VWAP${off}`;
+    case 'turnover': return `candle turnover $${off}`;
+    case 'highest': return `highest ${c.field} of last ${c.period}${off}`;
+    case 'lowest': return `lowest ${c.field} of last ${c.period}${off}`;
+    default: return `${c.kind.toUpperCase()}(${c.field},${c.period})${off}`;
+  }
+}
+const OPTXT = {gt:'>',gte:'≥',lt:'<',lte:'≤',crosses_above:'crosses above',crosses_below:'crosses below'};
+function updateSentence(){
+  const cs = readConds(); const itv = $('#interval').selectedOptions[0].text;
+  const join = $('#logic').value==='any' ? 'OR' : 'AND';
+  if(!cs.length){ $('#sentence').innerHTML = 'No conditions — add one.'; return; }
+  $('#sentence').innerHTML = `On <b>${itv}</b> candles, show pairs where ` + cs.map(c=>{
+    const m = c.mult!==1 ? `${c.mult} × ` : '';
+    return `<b>${opndText(c.left)}</b> ${OPTXT[c.op]} ${m}<b>${opndText(c.right)}</b>`;
+  }).join(` <span class="and">${join}</span> `);
+}
+$('#addCond').addEventListener('click',()=>condRow());
+$('#interval').addEventListener('change',updateSentence);
+$('#logic').addEventListener('change',updateSentence);
+
+/* ============================ scan mode (live / historical) ============================ */
+function syncScanMode(){
+  const hist = $('#scanMode').value==='history';
+  $('#lookbackFld').style.display = hist ? '' : 'none';
+  $('#runBtn').textContent = hist ? '▶ Run historical scan' : '▶ Run scan';
+  $('#liveResultsCard').style.display = hist ? 'none' : '';
+  $('#histResultsCard').style.display = hist ? '' : 'none';
+  $('#autoScan').closest('label').style.display = hist ? 'none' : '';
+}
+$('#scanMode').addEventListener('change', syncScanMode);
+syncScanMode();
+
+/* ============================ presets ============================ */
+const PRESETS = {
+  /* On 1h candles, show pairs where %chg over 1 candle > 2 x 3 (=6) AND latest volume >= 3 x SMA(volume,20) */
+  pvspike:{ interval:60, conditions:[
+    {left:{kind:'change_pct',field:'close',period:1,offset:0}, op:'gt', right:{kind:'number',value:3}, mult:2},
+    {left:{kind:'price',field:'volume',offset:0}, op:'gte',
+     right:{kind:'sma',field:'volume',period:20,offset:0}, mult:3},
+  ]},
+  /* On 5m candles, show pairs where %chg over 1 candle > 3 AND latest volume >= 3 x SMA(volume,20) */
+  pvspike5m:{ interval:5, conditions:[
+    {left:{kind:'change_pct',field:'close',period:1,offset:0}, op:'gt', right:{kind:'number',value:3}, mult:1},
+    {left:{kind:'price',field:'volume',offset:0}, op:'gte',
+     right:{kind:'sma',field:'volume',period:20,offset:0}, mult:3},
+  ]},
+  /* On 5m candles, show pairs where %chg over 1 candle > 1 AND latest volume >= 3 x SMA(volume,20)
+     AND EMA(close,21) < latest close AND latest close > day VWAP */
+  trendvolspike5m:{ interval:5, conditions:[
+    {left:{kind:'change_pct',field:'close',period:1,offset:0}, op:'gt', right:{kind:'number',value:1}, mult:1},
+    {left:{kind:'price',field:'volume',offset:0}, op:'gte',
+     right:{kind:'sma',field:'volume',period:20,offset:0}, mult:3},
+    {left:{kind:'ema',field:'close',period:21,offset:0}, op:'lt',
+     right:{kind:'price',field:'close',offset:0}, mult:1},
+    {left:{kind:'price',field:'close',offset:0}, op:'gt', right:{kind:'vwap',offset:0}, mult:1},
+  ]},
+};
+function loadPreset(name){
+  const p = PRESETS[name]; if(!p) return;
+  $('#conds').innerHTML='';
+  if(p.interval) $('#interval').value = String(p.interval);   // presets without interval use the selected timeframe
+  if(p.universe) $('#universe').value = p.universe;
+  if(p.lastClosed!==undefined) $('#lastClosed').value = p.lastClosed ? '1' : '0';
+  $('#logic').value = 'all';   // Match always defaults to ALL — every built-in preset is designed to work under ALL
+  p.conditions.forEach(c=>condRow(c));
+  updateSentence();
+}
+$('#preset').addEventListener('change',e=>loadPreset(e.target.value));
+loadPreset('pvspike');
+
+/* ============================ scan ============================ */
+let autoTimer = null;
+function scanConfig(){
+  const uni = $('#universe').value;
+  const maxVolRaw = $('#maxVol').value.trim();
+  const minChangeRaw = $('#minChange').value.trim();
+  return {
+    exchange: uni, quote: uni==='futures' ? 'USDT' : $('#quote').value,
+    interval: +$('#interval').value, top_n: +$('#topN').value||50,
+    min_quote_volume: (+$('#minVol').value||0) * 1_000_000,  // field is in millions
+    max_quote_volume: maxVolRaw!=='' ? (+maxVolRaw) * 1_000_000 : null,
+    min_change_pct: minChangeRaw!=='' ? +minChangeRaw : null,
+    use_last_closed: $('#lastClosed').value==='1',
+    logic: $('#logic').value, conditions: readConds(),
+    scan_mode: $('#scanMode').value,          // 'live' | 'history' — restored on load, ignored by /api/scan
+    lookback_days: +$('#lookbackDays').value, // only used when scan_mode is 'history'
+  };
+}
+/* visible countdown-free "still working" indicator — futures candle fetches are rate-limited to
+   28/min upstream, so a cold-cache scan of a big universe can take ~a minute with no other sign of life */
+function startScanTimer(btn, verb){
+  const t0 = Date.now();
+  btn.disabled = true;
+  const tick = () => {
+    const s = Math.round((Date.now()-t0)/1000);
+    btn.textContent = `▶ ${verb}… ${s}s`;
+    $('#status').innerHTML = `${verb}… <span class="mut">${s}s${s>10?' — futures pairs are rate-limited upstream (28 candle req/min); a cold-cache scan can take up to a minute, repeats are fast':''}</span>`;
+  };
+  tick();
+  return setInterval(tick, 1000);
+}
+function stopScanTimer(timer, btn){
+  clearInterval(timer);
+  btn.textContent = $('#scanMode').value==='history' ? '▶ Run historical scan' : '▶ Run scan';
+  btn.disabled = false;
+}
+
+async function runScan(){
+  if($('#scanMode').value==='history') return runHistoryScan();
+  let cfg;
+  try{ cfg = scanConfig(); }catch(e){ return toast('Could not read the scanner form: '+e.message, true); }
+  if(!cfg.conditions.length) return toast('Add at least one condition', true);
+  const btn = $('#runBtn');
+  $('#resBody').innerHTML = '<tr><td colspan="7" class="empty">Scanning…</td></tr>';
+  const timer = startScanTimer(btn, 'Scanning');
+  try{
+    const j = await api('/api/scan',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg)});
+    $('#status').innerHTML =
+      `scanned ${j.scanned} pairs · <span class="hit">${j.matched} matched</span> · ${(j.took_ms/1000).toFixed(1)}s`
+      + (j.errors.length ? ` · <span class="down" style="cursor:help">${j.errors.length} errors</span>` : '');
+    $('#status').title = j.errors.length ? j.errors.map(e=>`${e.symbol}: ${e.error}`).join('\n') : '';
+    window._lastMatches = j.matches;
+    renderResults(j.matches, cfg);
+  }catch(e){ $('#status').textContent=''; toast('Scan failed: '+e.message, true);
+    $('#resBody').innerHTML = '<tr><td colspan="7" class="empty">Scan failed — see the error toast.</td></tr>'; }
+  stopScanTimer(timer, btn);
+}
+
+async function runHistoryScan(){
+  let cfg;
+  try{ cfg = scanConfig(); }catch(e){ return toast('Could not read the scanner form: '+e.message, true); }
+  if(!cfg.conditions.length) return toast('Add at least one condition', true);
+  const btn = $('#runBtn');
+  $('#histBody').innerHTML = '<tr><td colspan="9" class="empty">Walking candles…</td></tr>';
+  const timer = startScanTimer(btn, 'Walking candles');
+  try{
+    const j = await api('/api/scan_history',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg)});
+    $('#status').innerHTML =
+      `scanned ${j.scanned} pairs · <span class="hit">${j.matched_events} events</span> across ${j.symbols_matched} symbols`
+      + ` · ${j.bars_per_symbol} candles/pair · ${(j.took_ms/1000).toFixed(1)}s`
+      + (j.truncated ? ` · <span class="down" style="cursor:help" title="Hit the ${j.matched_events.toLocaleString()}-row cap — narrow the filter, universe, or interval to see everything">⚠ truncated</span>` : '')
+      + (j.errors.length ? ` · <span class="down" style="cursor:help">${j.errors.length} errors</span>` : '');
+    $('#status').title = j.errors.length ? j.errors.map(e=>`${e.symbol}: ${e.error}`).join('\n') : '';
+    window._lastHistoryMatches = j.matches;
+    renderHistoryResults(j.matches, j);
+  }catch(e){ $('#status').textContent=''; toast('Historical scan failed: '+e.message, true);
+    $('#histBody').innerHTML = '<tr><td colspan="9" class="empty">Scan failed — see the error toast.</td></tr>'; }
+  stopScanTimer(timer, btn);
+}
+
+const HIST_DISPLAY_CAP = 500;
+function renderHistoryResults(rows, meta){
+  const summary = $('#histSummary');
+  if(!rows.length){
+    summary.style.display='none';
+    $('#histBody').innerHTML = '<tr><td colspan="9" class="empty">No pairs matched at any point in the lookback window — loosen a condition or widen the universe.</td></tr>';
+    return;
+  }
+  const shown = rows.slice(-HIST_DISPLAY_CAP).reverse();   // newest first, capped in the DOM only — CSV always has everything
+  summary.style.display='';
+  summary.innerHTML = `${rows.length.toLocaleString()} matched timestamp${rows.length===1?'':'s'} across `
+    + `${meta.symbols_matched} pair${meta.symbols_matched===1?'':'s'}, over the last ${meta.lookback_days} day${meta.lookback_days===1?'':'s'} of `
+    + `${$('#interval').selectedOptions[0].text} candles.`
+    + (rows.length>HIST_DISPLAY_CAP ? ` Showing latest ${HIST_DISPLAY_CAP} below — download CSV for all rows.` : '');
+  const istTime = t => new Date(t).toLocaleString('en-IN',{hour12:false,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  $('#histBody').innerHTML = shown.map(r=>`<tr data-sym="${r.symbol}" data-exch="${r.exchange||''}">
+      <td class="mut">${istTime(r.time)}</td>
+      <td class="sym">${r.symbol}${r.exchange==='futures'?'<span class="perp">PERP</span>':''}</td>
+      <td>${fmtP(r.open)}</td><td>${fmtP(r.high)}</td><td>${fmtP(r.low)}</td><td>${fmtP(r.close)}</td>
+      <td class="mut">${fmtV(r.volume)}</td>
+      <td class="${pctCls(r.change_pct_prev_candle)}">${r.change_pct_prev_candle==null?'—':pct2(r.change_pct_prev_candle)+'%'}</td>
+      <td class="${pctCls(r.change_pct_24h)}">${r.change_pct_24h==null?'—':pct2(r.change_pct_24h)+'%'}</td></tr>`).join('');
+}
+$('#histBody').addEventListener('click', e=>{
+  const tr = e.target.closest('tr'); if(tr && tr.dataset.sym) openChart(tr.dataset.sym, tr.dataset.exch);
+});
+
+/* ============================ CSV export ============================ */
+function toCSV(rows, cols){
+  const esc = v => { if(v==null) return ''; const s=String(v);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const lines = [cols.map(c=>esc(c.label)).join(',')];
+  rows.forEach(r=>lines.push(cols.map(c=>esc(c.get(r))).join(',')));
+  return lines.join('\r\n');
+}
+function downloadCSV(csv, filename){
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = el('a',{href:url,download:filename}); document.body.appendChild(a);
+  a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+const isoIST = t => new Date(t).toLocaleString('en-IN',{hour12:false});
+$('#dlLiveCsv').addEventListener('click', ()=>{
+  const rows = window._lastMatches||[];
+  if(!rows.length) return toast('No results to download yet', true);
+  const cols = [
+    {label:'symbol', get:r=>r.symbol}, {label:'exchange', get:r=>r.exchange},
+    {label:'last_price', get:r=>r.lastPrice}, {label:'change_24h_pct', get:r=>r.percentageChange},
+    {label:'quote_volume_24h', get:r=>r.quoteVolume}, {label:'candle_close', get:r=>r.candleClose},
+    {label:'candle_volume', get:r=>r.candleVolume}, {label:'candle_time_ist', get:r=>isoIST(r.candleTime)},
+    {label:'candle_time_epoch_ms', get:r=>r.candleTime},
+  ];
+  downloadCSV(toCSV(rows, cols), `cs-scan-live-${Date.now()}.csv`);
+});
+$('#dlHistCsv').addEventListener('click', ()=>{
+  const rows = window._lastHistoryMatches||[];
+  if(!rows.length) return toast('No results to download yet', true);
+  const cols = [
+    {label:'time_ist', get:r=>isoIST(r.time)}, {label:'time_epoch_ms', get:r=>r.time},
+    {label:'symbol', get:r=>r.symbol}, {label:'exchange', get:r=>r.exchange},
+    {label:'open', get:r=>r.open}, {label:'high', get:r=>r.high}, {label:'low', get:r=>r.low},
+    {label:'close', get:r=>r.close}, {label:'volume', get:r=>r.volume},
+    {label:'change_pct_prev_candle', get:r=>pct2(r.change_pct_prev_candle)},
+    {label:'change_pct_24h', get:r=>pct2(r.change_pct_24h)},
+  ];
+  downloadCSV(toCSV(rows, cols), `cs-scan-history-${Date.now()}.csv`);
+});
+function renderResults(rows, cfg){
+  if(!rows.length){ $('#resBody').innerHTML =
+    '<tr><td colspan="7" class="empty">No pairs matched — loosen a condition or widen the universe.</td></tr>'; return; }
+  $('#resBody').innerHTML = rows.map(r=>{
+    const chips = r.conditions.map((c,i)=>
+      `<span class="chip" title="left=${c.left?.toPrecision?.(6)??'—'} vs right=${c.right?.toPrecision?.(6)??'—'}">C${i+1} ${c.ok?'✓':'✗'}</span>`).join('');
+    return `<tr data-sym="${r.symbol}" data-exch="${r.exchange||''}">
+      <td class="sym">${r.symbol}${r.exchange==='futures'?'<span class="perp">PERP</span>':''}</td>
+      <td>${fmtP(r.lastPrice)}</td>
+      <td class="${pctCls(r.percentageChange)}">${r.percentageChange.toFixed(2)}%</td>
+      <td class="mut">${fmtV(r.quoteVolume)}</td>
+      <td>${fmtP(r.candleClose)}</td>
+      <td class="mut">${fmtV(r.candleVolume)}</td>
+      <td style="text-align:left">${chips}</td></tr>`;
+  }).join('');
+}
+$('#resBody').addEventListener('click', e=>{
+  const tr = e.target.closest('tr'); if(tr && tr.dataset.sym) openChart(tr.dataset.sym, tr.dataset.exch);
+});
+$('#runBtn').addEventListener('click', runScan);
+$('#autoScan').addEventListener('change', e=>{
+  clearInterval(autoTimer);
+  if(e.target.checked){ autoTimer = setInterval(runScan, 60_000); toast('Auto re-scan on (60s)'); }
+});
+
+/* ============================ saved scanners ============================ */
+async function refreshSaved(){
+  try{ const j = await api('/api/scanners');
+    $('#savedList').innerHTML = '<option value="">Load saved…</option>' +
+      j.scanners.map(s=>`<option value="${s.name}" title="${summarizeConfig(s.config).replace(/"/g,'&quot;')}">${s.name}</option>`).join('');
+    window._saved = Object.fromEntries(j.scanners.map(s=>[s.name,s.config]));
+  }catch(e){}
+}
+$('#saveBtn').addEventListener('click', async ()=>{
+  const name = $('#saveName').value.trim(); if(!name) return toast('Give the scanner a name', true);
+  await api('/api/scanners',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name, config:scanConfig()})});
+  toast(`Saved "${name}"`); refreshSaved(); loadMonitors();
+});
+function applyScanConfig(cfg){
+  const uni = ['all','spot','futures'].includes(cfg.exchange) ? cfg.exchange : 'all';
+  $('#universe').value = uni;
+  if(cfg.quote && uni!=='futures') $('#quote').value=cfg.quote;
+  $('#interval').value=String(cfg.interval||15);
+  $('#topN').value=cfg.top_n??50;
+  $('#minVol').value=+(((cfg.min_quote_volume??10000)/1_000_000).toFixed(4));
+  $('#maxVol').value = cfg.max_quote_volume!=null ? +((cfg.max_quote_volume/1_000_000).toFixed(4)) : '';
+  $('#minChange').value = cfg.min_change_pct!=null ? cfg.min_change_pct : '';
+  $('#logic').value=cfg.logic||'all';
+  $('#lastClosed').value = cfg.use_last_closed?'1':'0';
+  $('#scanMode').value = cfg.scan_mode==='history' ? 'history' : 'live';
+  $('#lookbackDays').value = cfg.lookback_days ? String(cfg.lookback_days) : '1';
+  syncScanMode();
+  $('#preset').value=''; $('#conds').innerHTML='';
+  (cfg.conditions||[]).forEach(c=>condRow(c)); updateSentence();
+}
+
+/* plain-text one-line summary of a saved config — used as the <option> hover tooltip
+   so a scanner's filter is visible without loading it into the builder first */
+const INTERVAL_LABELS = {1:'1m',5:'5m',15:'15m',30:'30m',60:'1h',240:'4h',1440:'1d'};
+function summarizeConfig(cfg){
+  const cs = cfg.conditions||[];
+  if(!cs.length) return 'no conditions';
+  const itv = INTERVAL_LABELS[cfg.interval] || (cfg.interval+'m');
+  const join = cfg.logic==='any' ? 'OR' : 'AND';
+  const uni = cfg.exchange==='futures'?'Futures':cfg.exchange==='spot'?'Spot':cfg.exchange==='all'?'Spot+Futures':cfg.exchange;
+  const mode = cfg.scan_mode==='history' ? `Historical, last ${cfg.lookback_days||1}d` : (cfg.use_last_closed?'Last closed':'Forming');
+  const conds = cs.map(c=>{
+    const m = c.mult!==1 ? `${c.mult}x ` : '';
+    return `${opndText(c.left)} ${OPTXT[c.op]} ${m}${opndText(c.right)}`;
+  }).join(` ${join} `);
+  return `${uni} · ${itv} · ${mode}\n${conds}`;
+}
+$('#savedList').addEventListener('change', e=>{
+  const cfg = window._saved?.[e.target.value]; if(!cfg) return;
+  applyScanConfig(cfg);
+});
+
+/* AI: plain English -> scanner */
+async function aiBuild(){
+  const q = $('#aiQuery').value.trim(); if(!q) return toast('Type what you want to scan for', true);
+  const b = $('#aiBtn'); b.disabled=true; b.textContent='thinking…';
+  try{
+    const j = await api('/api/nl2scan',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q})});
+    applyScanConfig(j.config);
+    const ex = $('#aiExplain'); ex.style.display='';
+    ex.innerHTML = '🤖 ' + (j.explanation||'Scanner built') + ' — running it now…';
+    await runScan();
+  }catch(e){ toast('AI builder: '+e.message, true); }
+  b.disabled=false; b.textContent='✨ Build scanner';
+}
+$('#aiBtn').addEventListener('click', aiBuild);
+$('#aiQuery').addEventListener('keydown', e=>{ if(e.key==='Enter') aiBuild(); });
+$('#delSaved').addEventListener('click', async ()=>{
+  const name = $('#savedList').value; if(!name) return;
+  if(!confirm(`Delete saved scanner "${name}"?\n\nIt moves to Trash — you can restore it from there if this was a mistake.`)) return;
+  await api('/api/scanners/'+encodeURIComponent(name),{method:'DELETE'});
+  toast(`Deleted "${name}" — recoverable from Trash`); refreshSaved(); loadMonitors(); refreshTrash();
+});
+
+/* ---- trash: recover an accidentally-deleted saved scanner ---- */
+async function refreshTrash(){
+  let j; try{ j = await api('/api/scanners/trash'); }catch(e){ return; }
+  const panel = $('#trashPanel');
+  $('#trashBtn').textContent = `🗑 Trash${j.trash.length ? ` (${j.trash.length})` : ''}`;
+  if(!panel.classList.contains('open')) return;   // don't bother rendering a closed panel
+  if(!j.trash.length){
+    panel.innerHTML = '<div class="empty">Trash is empty.</div>';
+    return;
+  }
+  const t = ms => ms ? new Date(ms).toLocaleString('en-IN',{hour12:false}) : '—';
+  panel.innerHTML = [...j.trash].reverse().map(s=>`
+    <div class="cond" style="justify-content:space-between">
+      <div><b>${s.name}</b><br><span class="mut" style="font-size:11px">deleted ${t(s.deleted_at)} · ${summarizeConfig(s.config).split('\n')[0]}</span></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn ghost sm restoreBtn" data-name="${s.name}" title="Restore this scanner">↺ Restore</button>
+        <button class="btn ghost sm purgeBtn" data-name="${s.name}" title="Permanently delete — cannot be undone">✕ forever</button>
+      </div>
+    </div>`).join('');
+  panel.querySelectorAll('.restoreBtn').forEach(b=>b.addEventListener('click', async ()=>{
+    const j2 = await api('/api/scanners/trash/'+encodeURIComponent(b.dataset.name)+'/restore',{method:'POST'});
+    toast(`Restored "${j2.name}"`); refreshSaved(); loadMonitors(); refreshTrash();
+  }));
+  panel.querySelectorAll('.purgeBtn').forEach(b=>b.addEventListener('click', async ()=>{
+    if(!confirm(`Permanently delete "${b.dataset.name}"? This cannot be undone.`)) return;
+    await api('/api/scanners/trash/'+encodeURIComponent(b.dataset.name),{method:'DELETE'});
+    toast(`Permanently deleted "${b.dataset.name}"`); refreshTrash();
+  }));
+}
+$('#trashBtn').addEventListener('click', ()=>{
+  $('#trashPanel').classList.toggle('open');
+  $('#trashPanel').style.display = $('#trashPanel').classList.contains('open') ? '' : 'none';
+  refreshTrash();
+});
+refreshTrash();
+refreshSaved();
+
+/* ============================ monitors ============================ */
+const MON_INTERVALS = [[60,'every 1 min'],[300,'every 5 min'],[900,'every 15 min'],[3600,'hourly']];
+async function setMonitor(name, enabled, every, whatsapp){
+  try{
+    await api('/api/monitors/'+encodeURIComponent(name),{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({enabled, every_sec:+every, whatsapp:!!whatsapp})});
+    const label = MON_INTERVALS.find(([v])=>v==+every)?.[1] || `every ${every}s`;
+    toast(enabled?`Monitoring "${name}" ${label}${whatsapp?' · WhatsApp on':''}`:`Stopped "${name}"`);
+    loadMonitors();
+  }catch(e){ toast('Monitor: '+e.message, true); }
+}
+async function loadMonitors(){
+  let j; try{ j = await api('/api/monitors'); }catch(e){ return; }
+  const list = $('#monList');
+  if(!j.monitors.length){
+    list.innerHTML = '<div class="empty">Save a scanner, then enable it here to auto-scan every 1/5/15 min or hourly, aligned to the clock.</div>';
+    return;
+  }
+  const t = s => s!=null ? new Date(s*1000).toLocaleTimeString('en-IN',{hour12:false}) : '—';
+  list.innerHTML = j.monitors.map(mo=>{
+    const next = mo.enabled ? ` · next ${t(mo.next_run)}` : '';
+    const stat = mo.error ? `<span class="down">error: ${mo.error}</span>${next}`
+      : mo.enabled && mo.last_run ? `last ${t(mo.last_run)} · scanned ${mo.scanned??'—'} · <span class="hit">${mo.matched??0} hits</span>${next}`
+      : mo.enabled ? `waiting for first run…${next}` : 'off';
+    const hits = (mo.matches||[]).map(m=>
+      `<span class="chip" data-sym="${m.symbol}" data-exch="${m.exchange||''}"
+        style="cursor:pointer${m.new?';outline:1px solid var(--warn)':''}"
+        title="${fmtP(m.lastPrice)} · ${m.percentageChange?.toFixed?.(2)}%">${m.symbol}${m.new?' ●':''}</span>`).join(' ');
+    return `<div class="cond" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div class="row">
+        <label class="hctl" style="gap:6px">
+          <input type="checkbox" class="monEn" data-name="${mo.name}" ${mo.enabled?'checked':''} style="width:auto">
+          <b>${mo.name}</b></label>
+        <select class="monEvery" data-name="${mo.name}">
+          ${MON_INTERVALS.map(([v,l])=>`<option value="${v}" ${mo.every_sec==v?'selected':''}>${l}</option>`).join('')}
+        </select>
+        <label class="hctl" style="gap:4px" title="Send a WhatsApp message (via Twilio) when this monitor finds new matches">
+          <input type="checkbox" class="monWa" data-name="${mo.name}" ${mo.whatsapp?'checked':''} style="width:auto"> WhatsApp</label>
+        <span style="flex:1;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${stat}</span>
+      </div>
+      ${hits?`<div>${hits}</div>`:''}
+    </div>`;
+  }).join('');
+  const valOf = (cls,name) => list.querySelector(`.${cls}[data-name="${CSS.escape(name)}"]`);
+  list.querySelectorAll('.monEn').forEach(cb=>cb.addEventListener('change',e=>{
+    const name=e.target.dataset.name;
+    setMonitor(name, e.target.checked, valOf('monEvery',name).value, valOf('monWa',name).checked);
+  }));
+  list.querySelectorAll('.monEvery').forEach(sel=>sel.addEventListener('change',e=>{
+    const name=e.target.dataset.name;
+    if(valOf('monEn',name).checked) setMonitor(name, true, e.target.value, valOf('monWa',name).checked);
+  }));
+  list.querySelectorAll('.monWa').forEach(cb=>cb.addEventListener('change',e=>{
+    const name=e.target.dataset.name;
+    setMonitor(name, valOf('monEn',name).checked, valOf('monEvery',name).value, e.target.checked);
+  }));
+  list.querySelectorAll('.chip[data-sym]').forEach(ch=>ch.addEventListener('click',()=>
+    openChart(ch.dataset.sym, ch.dataset.exch)));
+}
+loadMonitors();
+setInterval(()=>{ if(!document.hidden) loadMonitors(); }, 10_000);
+
+/* ============================ candle chart ============================ */
+/* ============================ chart (TradingView lightweight-charts) ============================ */
+let chartSym=null, chartExch='all', chartItv=15, chartTimer=null;
+let pChart=null, rChart=null, sCandle=null, sVol=null, sEma9=null, sEma21=null, sVwap=null, sRsi=null;
+let candleMap={}, syncing=false;
+
+function emaArr(vals,n){ const out=Array(vals.length).fill(null);
+  if(vals.length<n) return out; const k=2/(n+1);
+  let e=vals.slice(0,n).reduce((a,b)=>a+b,0)/n; out[n-1]=e;
+  for(let i=n;i<vals.length;i++){ e=vals[i]*k+e*(1-k); out[i]=e; } return out; }
+function rsiArr(closes,n){ const out=Array(closes.length).fill(null);
+  if(closes.length<=n) return out; let g=0,l=0;
+  for(let i=1;i<=n;i++){ const d=closes[i]-closes[i-1]; g+=Math.max(d,0); l+=Math.max(-d,0); }
+  let ag=g/n, al=l/n; out[n]= al===0?100:100-100/(1+ag/al);
+  for(let i=n+1;i<closes.length;i++){ const d=closes[i]-closes[i-1];
+    ag=(ag*(n-1)+Math.max(d,0))/n; al=(al*(n-1)+Math.max(-d,0))/n;
+    out[i]= al===0?100:100-100/(1+ag/al); } return out; }
+function vwapArr(cs){ // daily-anchored at IST midnight (matches CoinSwitch app)
+  const out=Array(cs.length).fill(null); let day=null,pv=0,vv=0;
+  for(let i=0;i<cs.length;i++){ const c=cs[i], d=Math.floor((c.t+19800000)/86400000);
+    if(d!==day){ day=d; pv=0; vv=0; }
+    pv += (c.h+c.l+c.c)/3*c.v; vv += c.v;
+    out[i] = vv>0 ? pv/vv : null; }
+  return out; }
+
+/* ---- IST time rendering (Asia/Kolkata, UTC+5:30) ---- */
+const istTime = t => new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hour12:false}).format(t*1000);
+const istDate = t => new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short'}).format(t*1000);
+const istFull = t => new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(t*1000);
+
+const TV_THEME = {
+  layout:{ background:{type:'solid', color:'transparent'}, textColor:'#7C8AA5',
+           fontFamily:"'IBM Plex Mono',monospace", fontSize:11 },
+  grid:{ vertLines:{color:'rgba(30,42,63,.5)'}, horzLines:{color:'rgba(30,42,63,.5)'} },
+  crosshair:{ mode:0 },
+  localization:{ locale:'en-IN', timeFormatter: istFull },
+  timeScale:{ timeVisible:true, secondsVisible:false, borderColor:'#1E2A3F',
+    tickMarkFormatter:(t, type)=> type < 3 ? istDate(t) : istTime(t) },
+  rightPriceScale:{ borderColor:'#1E2A3F' },
+};
+
+function initCharts(){
+  if(pChart || !window.LightweightCharts){ return !!pChart; }
+  pChart = LightweightCharts.createChart($('#priceChart'), {...TV_THEME, autoSize:true});
+  sCandle = pChart.addCandlestickSeries({
+    upColor:'#2FD182', downColor:'#FF5C6C', borderVisible:false,
+    wickUpColor:'#2FD182', wickDownColor:'#FF5C6C',
+    priceFormat:{type:'price', precision:6, minMove:0.000001}});
+  sVol = pChart.addHistogramSeries({ priceScaleId:'vol', priceFormat:{type:'volume'}, lastValueVisible:false, priceLineVisible:false });
+  pChart.priceScale('vol').applyOptions({ scaleMargins:{top:0.82, bottom:0} });
+  sEma9  = pChart.addLineSeries({ color:'#6C7CFF', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+  sEma21 = pChart.addLineSeries({ color:'#F5B443', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+  sVwap  = pChart.addLineSeries({ color:'#9AA3B5', lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+
+  rChart = LightweightCharts.createChart($('#rsiChart'), {...TV_THEME, autoSize:true});
+  sRsi = rChart.addLineSeries({ color:'#B48CFF', lineWidth:1.5, priceLineVisible:false, lastValueVisible:true });
+  sRsi.createPriceLine({price:70, color:'#FF5C6C', lineWidth:1, lineStyle:2, title:'70'});
+  sRsi.createPriceLine({price:30, color:'#2FD182', lineWidth:1, lineStyle:2, title:'30'});
+
+  // keep both panes time-synced
+  const link=(a,b)=>a.timeScale().subscribeVisibleLogicalRangeChange(r=>{
+    if(syncing||!r) return; syncing=true; b.timeScale().setVisibleLogicalRange(r); syncing=false; });
+  link(pChart,rChart); link(rChart,pChart);
+
+  pChart.subscribeCrosshairMove(p=>{
+    const c = p&&p.time!=null ? candleMap[p.time] : null;
+    renderLegend(c || candleMap._last);
+  });
+  return true;
+}
+
+function renderLegend(c){
+  if(!c){ $('#dLegend').innerHTML=''; return; }
+  const chg=(c.c-c.o)/c.o*100, cls=chg>=0?'up':'down';
+  $('#dLegend').innerHTML =
+    `<span>${istFull(Math.floor(c.t/1000))} IST</span>`+
+    `<span>O <b>${fmtP(c.o)}</b></span><span>H <b>${fmtP(c.h)}</b></span>`+
+    `<span>L <b>${fmtP(c.l)}</b></span><span>C <b>${fmtP(c.c)}</b></span>`+
+    `<span class="${cls}">${chg.toFixed(2)}%</span>`+
+    `<span>Vol <b>${fmtV(c.v)}</b></span>`+
+    (c.e9?`<span style="color:#6C7CFF">EMA9 <b>${fmtP(c.e9)}</b></span>`:'')+
+    (c.e21?`<span style="color:#F5B443">EMA21 <b>${fmtP(c.e21)}</b></span>`:'')+
+    (c.vw?`<span style="color:#9AA3B5">VWAP <b>${fmtP(c.vw)}</b> <span class="${(c.c-c.vw)>=0?'up':'down'}">${((c.c-c.vw)/c.vw*100).toFixed(2)}%</span></span>`:'')+
+    (c.r!=null?`<span style="color:#B48CFF">RSI <b>${c.r.toFixed(1)}</b></span>`:'');
+}
+
+async function drawChart(fit=false){
+  if(!chartSym) return;
+  if(!initCharts()){ $('#dLegend').innerHTML='chart library failed to load — check internet access to unpkg.com'; return; }
+  // fetch enough history to reach IST midnight so VWAP anchors correctly
+  const sinceMidMin = ((Date.now()+19800000) % 86400000)/60000;
+  const limit = Math.min(1000, Math.max(300, Math.ceil(sinceMidMin/chartItv)+40));
+  let j;
+  try{ j = await api(`/api/candles?symbol=${encodeURIComponent(chartSym)}&exchange=${encodeURIComponent(chartExch)}&interval=${chartItv}&limit=${limit}`); }
+  catch(e){ return toast('Candles failed: '+e.message, true); }
+  const cs=j.candles; if(!cs.length){ $('#dLegend').innerHTML='no candle data'; return; }
+  // live tick: fold the current ticker price into the forming candle
+  if(j.lastPrice){ const L=cs[cs.length-1];
+    L.c=j.lastPrice; L.h=Math.max(L.h,j.lastPrice); L.l=Math.min(L.l,j.lastPrice); }
+  const closes=cs.map(c=>c.c), e9=emaArr(closes,9), e21=emaArr(closes,21), rs=rsiArr(closes,14), vw=vwapArr(cs);
+  candleMap={};
+  const cd=[], vd=[], e9d=[], e21d=[], rd=[], vwd=[];
+  cs.forEach((c,i)=>{ const t=Math.floor(c.t/1000);
+    candleMap[t]={...c, e9:e9[i], e21:e21[i], r:rs[i], vw:vw[i]};
+    cd.push({time:t, open:c.o, high:c.h, low:c.l, close:c.c});
+    vd.push({time:t, value:c.v, color: c.c>=c.o?'rgba(47,209,130,.4)':'rgba(255,92,108,.4)'});
+    if(e9[i]!=null) e9d.push({time:t, value:e9[i]});
+    if(e21[i]!=null) e21d.push({time:t, value:e21[i]});
+    if(rs[i]!=null) rd.push({time:t, value:rs[i]});
+    if(vw[i]!=null) vwd.push({time:t, value:vw[i]});
+  });
+  candleMap._last = candleMap[Math.floor(cs[cs.length-1].t/1000)];
+  sCandle.setData(cd); sVol.setData(vd);
+  const emaOn=$('#dEma').checked;
+  sEma9.setData(emaOn?e9d:[]); sEma21.setData(emaOn?e21d:[]);
+  sVwap.setData($('#dVwap').checked?vwd:[]);
+  sRsi.setData(rd);
+  renderLegend(candleMap._last);
+  if(fit){ pChart.timeScale().fitContent(); rChart.timeScale().fitContent(); }
+}
+
+function startChartRefresh(){
+  clearInterval(chartTimer);
+  const ms = chartExch==='futures' ? 10_000 : 3_000; // futures klines are rate-limited
+  chartTimer = setInterval(()=>{ if($('#drawer').classList.contains('open') && !document.hidden) drawChart(false); }, ms);
+}
+
+async function openChart(sym, exch){
+  chartSym=sym; chartExch=exch||'all';
+  $('#dTitle').textContent=sym;
+  $('#drawer').classList.add('open');
+  await drawChart(true);
+  startChartRefresh();
+}
+$('#dClose').addEventListener('click',()=>{ $('#drawer').classList.remove('open'); clearInterval(chartTimer); });
+$('#dItv').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#dItv button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); chartItv=+b.dataset.i; drawChart(true);
+});
+$('#dEma').addEventListener('change',()=>drawChart(false));
+$('#dVwap').addEventListener('change',()=>drawChart(false));
+$('#dRsi').addEventListener('change',e=>{ $('#rsiChart').classList.toggle('hidden', !e.target.checked); });
+</script>
+</body>
+</html>
