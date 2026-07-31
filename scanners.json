@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "name": "gh_persist_test",
+    "config": {
+      "probe": true
+    },
+    "saved_at": 1785484266078
+  }
+]
