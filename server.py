@@ -2224,9 +2224,14 @@ def _gh_pull(path: str) -> Optional[list]:
         return None
 
 
-def _gh_push(path: str, data) -> None:
+def _gh_push(path: str, data, _retried: bool = False) -> None:
     """Best-effort write-through to the repo. Failures are logged, never raised — the local file
-    write already happened, so a save never fails just because GitHub is unreachable."""
+    write already happened, so a save never fails just because GitHub is unreachable.
+
+    On a 409 (this process's cached sha is stale — e.g. the file was edited outside this running
+    instance) we refetch the current sha and retry once. Without this, a single out-of-band edit
+    would permanently desync this process from GitHub: every future save would keep failing
+    silently against the same stale sha until the process restarts."""
     payload = {
         "message": f"Update {path}",
         "content": base64.b64encode(json.dumps(data, indent=2).encode("utf-8")).decode("ascii"),
@@ -2238,6 +2243,11 @@ def _gh_push(path: str, data) -> None:
     try:
         with _gh_client() as c:
             r = c.put(f"/repos/{GITHUB_REPO}/contents/{path}", json=payload)
+        if r.status_code == 409 and not _retried:
+            log.warning("GitHub sha stale for %s, refetching and retrying once", path)
+            _gh_pull(path)  # refreshes _gh_sha_cache[path] as a side effect
+            _gh_push(path, data, _retried=True)
+            return
         r.raise_for_status()
         _gh_sha_cache[path] = r.json()["content"]["sha"]
     except Exception as e:
