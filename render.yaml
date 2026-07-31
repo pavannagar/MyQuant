@@ -19,3 +19,9 @@ services:
         sync: false
       - key: LIVE_TRADING
         value: "0"
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        value: "pavannagar/MyQuant"
+      - key: GITHUB_BRANCH
+        value: "main"

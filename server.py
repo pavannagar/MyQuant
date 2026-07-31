@@ -11,6 +11,7 @@ Then open http://localhost:8090
 """
 
 import asyncio
+import base64
 import csv
 import datetime as _dt
 import io
@@ -47,6 +48,17 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "")   # e.g. "whatsapp:+14155238886"
 TWILIO_WHATSAPP_TO = os.getenv("TWILIO_WHATSAPP_TO", "")       # e.g. "whatsapp:+9198xxxxxxx"
 WHATSAPP_CONFIGURED = bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM and TWILIO_WHATSAPP_TO)
+
+# ---------------------------------------------- durable storage (GitHub) ----
+# Render's free tier has no persistent disk — anything written to scanners.json survives only
+# until the container spins down. When these are set, saved scanners/trash are mirrored to a file
+# in this GitHub repo (read once at cold start, written on every save) so they outlive a restart.
+# Local files stay in use as the fast-path read cache either way; without these vars set, behavior
+# is unchanged (local file only, as before).
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "")             # "owner/repo"
+GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
+GITHUB_CONFIGURED = bool(GITHUB_TOKEN and GITHUB_REPO)
 
 # --------------------------------------------------- auto-trading -----------
 # Master switch: starts OFF (dry-run) on purpose. A monitor with auto_trade=true only ever
@@ -2169,31 +2181,102 @@ async def _shutdown():
 
 
 # ------------------------------------------------- saved scanners -----------
+#
+# GitHub-backed persistence: _gh_synced_files tracks which paths have already had their one
+# startup pull from GitHub (success, "not found", or failure — any outcome counts), so a hot loop
+# like _monitor_loop (ticks every 1s and calls _load_scanners each time) only ever costs one GitHub
+# API call per process lifetime instead of one per tick. Every save still pushes to GitHub
+# immediately (low frequency, user-triggered) and updates the local file so the next read anywhere
+# in this process sees it instantly without a round trip.
 
-def _load_scanners() -> list[dict]:
-    if SCANNERS_FILE.exists():
+_gh_sha_cache: dict[str, Optional[str]] = {}
+_gh_synced_files: set[str] = set()
+
+
+def _gh_client() -> httpx.Client:
+    return httpx.Client(
+        base_url="https://api.github.com",
+        headers={
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        timeout=10.0,
+    )
+
+
+def _gh_pull(path: str) -> Optional[list]:
+    """One-shot fetch of a JSON file from the repo. None if missing/failed — caller falls back to
+    the local on-disk copy either way, so a GitHub outage never blocks reads."""
+    try:
+        with _gh_client() as c:
+            r = c.get(f"/repos/{GITHUB_REPO}/contents/{path}", params={"ref": GITHUB_BRANCH})
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        body = r.json()
+        _gh_sha_cache[path] = body["sha"]
+        return json.loads(base64.b64decode(body["content"]).decode("utf-8"))
+    except Exception as e:
+        log.warning("GitHub read failed for %s: %s", path, e)
+        return None
+
+
+def _gh_push(path: str, data) -> None:
+    """Best-effort write-through to the repo. Failures are logged, never raised — the local file
+    write already happened, so a save never fails just because GitHub is unreachable."""
+    payload = {
+        "message": f"Update {path}",
+        "content": base64.b64encode(json.dumps(data, indent=2).encode("utf-8")).decode("ascii"),
+        "branch": GITHUB_BRANCH,
+    }
+    sha = _gh_sha_cache.get(path)
+    if sha:
+        payload["sha"] = sha
+    try:
+        with _gh_client() as c:
+            r = c.put(f"/repos/{GITHUB_REPO}/contents/{path}", json=payload)
+        r.raise_for_status()
+        _gh_sha_cache[path] = r.json()["content"]["sha"]
+    except Exception as e:
+        log.warning("GitHub write failed for %s: %s", path, e)
+
+
+def _load_json_file(file: Path, gh_path: str) -> list[dict]:
+    if GITHUB_CONFIGURED and gh_path not in _gh_synced_files:
+        _gh_synced_files.add(gh_path)
+        data = _gh_pull(gh_path)
+        if data is not None:
+            file.write_text(json.dumps(data, indent=2))
+    if file.exists():
         try:
-            return json.loads(SCANNERS_FILE.read_text())
+            return json.loads(file.read_text())
         except json.JSONDecodeError:
             return []
     return []
+
+
+def _save_json_file(file: Path, gh_path: str, data) -> None:
+    file.write_text(json.dumps(data, indent=2))
+    if GITHUB_CONFIGURED:
+        _gh_synced_files.add(gh_path)  # a push makes this process's copy authoritative either way
+        _gh_push(gh_path, data)
+
+
+def _load_scanners() -> list[dict]:
+    return _load_json_file(SCANNERS_FILE, "scanners.json")
 
 
 def _save_scanners(items: list[dict]):
-    SCANNERS_FILE.write_text(json.dumps(items, indent=2))
+    _save_json_file(SCANNERS_FILE, "scanners.json", items)
 
 
 def _load_trash() -> list[dict]:
-    if SCANNERS_TRASH_FILE.exists():
-        try:
-            return json.loads(SCANNERS_TRASH_FILE.read_text())
-        except json.JSONDecodeError:
-            return []
-    return []
+    return _load_json_file(SCANNERS_TRASH_FILE, "scanners_trash.json")
 
 
 def _save_trash(items: list[dict]):
-    SCANNERS_TRASH_FILE.write_text(json.dumps(items[-MAX_TRASH:], indent=2))
+    _save_json_file(SCANNERS_TRASH_FILE, "scanners_trash.json", items[-MAX_TRASH:])
 
 
 class SavedScanner(BaseModel):
