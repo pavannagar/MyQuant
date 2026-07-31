@@ -43,11 +43,14 @@ BASE_URL = os.getenv("COINSWITCH_BASE_URL", "https://coinswitch.co")
 API_KEY = os.getenv("COINSWITCH_API_KEY", "")
 SECRET_KEY = os.getenv("COINSWITCH_SECRET_KEY", "")
 
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
-TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "")   # e.g. "whatsapp:+14155238886"
-TWILIO_WHATSAPP_TO = os.getenv("TWILIO_WHATSAPP_TO", "")       # e.g. "whatsapp:+9198xxxxxxx"
-WHATSAPP_CONFIGURED = bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM and TWILIO_WHATSAPP_TO)
+# Alerts go out via a Telegram bot rather than Twilio WhatsApp — WhatsApp's 24h session-window
+# policy (and the sandbox's separate 3-day rejoin requirement) made unattended alerts unreliable;
+# Telegram's bot API has no such restriction. The "whatsapp" field name in saved monitor configs
+# and the frontend checkbox label are unchanged (both UIs hardcode "whatsapp" as the JSON key) —
+# only the delivery channel behind it changed.
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+WHATSAPP_CONFIGURED = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
 
 # ---------------------------------------------- durable storage (GitHub) ----
 # Render's free tier has no persistent disk — anything written to scanners.json survives only
@@ -143,19 +146,18 @@ def client() -> httpx.AsyncClient:
 
 
 async def send_whatsapp_message(body: str) -> None:
-    """Best-effort WhatsApp alert via Twilio. Never raises — a failed alert shouldn't kill a monitor."""
+    """Best-effort alert via Telegram. Never raises — a failed alert shouldn't kill a monitor."""
     if not WHATSAPP_CONFIGURED:
-        log.warning("WhatsApp alert skipped — TWILIO_* env vars not fully set")
+        log.warning("Alert skipped — TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not fully set")
         return
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     try:
         async with httpx.AsyncClient(timeout=15.0) as c:
-            r = await c.post(url, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN),
-                             data={"From": TWILIO_WHATSAPP_FROM, "To": TWILIO_WHATSAPP_TO, "Body": body[:1500]})
+            r = await c.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": body[:4000]})
         if r.status_code >= 300:
-            log.warning("Twilio WhatsApp send failed %s: %s", r.status_code, r.text[:300])
+            log.warning("Telegram send failed %s: %s", r.status_code, r.text[:300])
     except httpx.HTTPError as e:
-        log.warning("Twilio WhatsApp send error: %s", e)
+        log.warning("Telegram send error: %s", e)
 
 
 async def cs_get(endpoint: str, params: Optional[dict] = None, retries: int = 3) -> Any:

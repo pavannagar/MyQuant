@@ -9,13 +9,9 @@ services:
         sync: false
       - key: COINSWITCH_SECRET_KEY
         sync: false
-      - key: TWILIO_ACCOUNT_SID
+      - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: TWILIO_AUTH_TOKEN
-        sync: false
-      - key: TWILIO_WHATSAPP_FROM
-        sync: false
-      - key: TWILIO_WHATSAPP_TO
+      - key: TELEGRAM_CHAT_ID
         sync: false
       - key: LIVE_TRADING
         value: "0"
