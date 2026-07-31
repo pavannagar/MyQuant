@@ -1,1 +1,234 @@
-[]
+[
+  {
+    "name": "Tester",
+    "config": {
+      "exchange": "futures",
+      "quote": "USDT",
+      "interval": 1,
+      "top_n": 50,
+      "min_quote_volume": 10000000,
+      "max_quote_volume": null,
+      "min_change_pct": 5,
+      "use_last_closed": true,
+      "logic": "all",
+      "conditions": [
+        {
+          "left": {
+            "kind": "change_pct",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "number",
+            "field": "close",
+            "period": 20,
+            "offset": 0,
+            "value": 3
+          },
+          "mult": 0.1
+        }
+      ],
+      "scan_mode": "live",
+      "lookback_days": 1
+    },
+    "saved_at": 1784413349734,
+    "monitor": {
+      "enabled": false,
+      "every_sec": 60,
+      "whatsapp": false,
+      "auto_trade": false
+    }
+  },
+  {
+    "name": "HourMagic",
+    "config": {
+      "exchange": "futures",
+      "quote": "USDT",
+      "interval": 60,
+      "top_n": 50,
+      "min_quote_volume": 10000000,
+      "max_quote_volume": null,
+      "min_change_pct": 5,
+      "use_last_closed": false,
+      "logic": "all",
+      "conditions": [
+        {
+          "left": {
+            "kind": "change_pct",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "number",
+            "field": "close",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 2
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "volume",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gte",
+          "right": {
+            "kind": "sma",
+            "field": "volume",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 3
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        }
+      ],
+      "scan_mode": "live",
+      "lookback_days": 1
+    },
+    "saved_at": 1784415565890,
+    "monitor": {
+      "enabled": false,
+      "every_sec": 3600,
+      "whatsapp": false,
+      "auto_trade": false
+    }
+  },
+  {
+    "name": "TestingCandle",
+    "config": {
+      "exchange": "futures",
+      "quote": "USDT",
+      "interval": 5,
+      "top_n": 50,
+      "min_quote_volume": 10000000,
+      "max_quote_volume": null,
+      "min_change_pct": 5,
+      "use_last_closed": false,
+      "logic": "all",
+      "conditions": [
+        {
+          "left": {
+            "kind": "change_pct",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "change_pct",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "mult": 1.5
+        }
+      ],
+      "scan_mode": "live",
+      "lookback_days": 1
+    },
+    "saved_at": 1784619030419
+  },
+  {
+    "name": "HourMagicAlert",
+    "config": {
+      "exchange": "futures",
+      "quote": "USDT",
+      "interval": 60,
+      "top_n": 90,
+      "min_quote_volume": 10000000,
+      "max_quote_volume": null,
+      "min_change_pct": 1,
+      "use_last_closed": false,
+      "logic": "all",
+      "conditions": [
+        {
+          "left": {
+            "kind": "change_pct",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "number",
+            "field": "close",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 2
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "volume",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gte",
+          "right": {
+            "kind": "sma",
+            "field": "volume",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 3
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 20,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        }
+      ],
+      "scan_mode": "live",
+      "lookback_days": 1
+    },
+    "saved_at": 1785265755033
+  }
+]
