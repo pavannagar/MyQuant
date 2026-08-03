@@ -236,5 +236,841 @@
       "whatsapp": true,
       "auto_trade": false
     }
+  },
+  {
+    "name": "1H_7Bar_EMA_VWAP",
+    "config": {
+      "exchange": "futures",
+      "quote": "USDT",
+      "interval": 60,
+      "top_n": 100,
+      "min_quote_volume": 10000000,
+      "max_quote_volume": null,
+      "min_change_pct": null,
+      "use_last_closed": true,
+      "logic": "all",
+      "conditions": [
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 1,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 1,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 2,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 2,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 3,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 3,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 3,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 3,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 3,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 3,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 4,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 4,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 4,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 4,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 4,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 4,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 5,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 5,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 5,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 5,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 5,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 5,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 6,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 6,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 6,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 6,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 6,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 6,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "change_pct",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "number",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        }
+      ],
+      "scan_mode": "live",
+      "lookback_days": 1
+    },
+    "saved_at": 1785755118864,
+    "monitor": {
+      "enabled": false,
+      "every_sec": 900,
+      "whatsapp": false,
+      "auto_trade": false
+    }
+  },
+  {
+    "name": "15MIN_7Bar_EMA_VWAP",
+    "config": {
+      "exchange": "futures",
+      "quote": "USDT",
+      "interval": 15,
+      "top_n": 100,
+      "min_quote_volume": 5000000,
+      "max_quote_volume": null,
+      "min_change_pct": 2,
+      "use_last_closed": true,
+      "logic": "all",
+      "conditions": [
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 1,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 1,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 1,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 2,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 2,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 2,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 3,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 3,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 3,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 3,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 3,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 3,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 4,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 4,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 4,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 4,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 4,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 4,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 5,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 5,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 5,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 5,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 5,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 5,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 6,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 9,
+            "offset": 6,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 6,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "ema",
+            "field": "close",
+            "period": 21,
+            "offset": 6,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "price",
+            "field": "close",
+            "period": 1,
+            "offset": 6,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "vwap",
+            "field": "close",
+            "period": 1,
+            "offset": 6,
+            "value": 0
+          },
+          "mult": 1
+        },
+        {
+          "left": {
+            "kind": "change_pct",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "op": "gt",
+          "right": {
+            "kind": "number",
+            "field": "close",
+            "period": 1,
+            "offset": 0,
+            "value": 0
+          },
+          "mult": 1
+        }
+      ],
+      "scan_mode": "live",
+      "lookback_days": 1
+    },
+    "saved_at": 1785756246949
   }
 ]
