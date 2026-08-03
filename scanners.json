@@ -1071,6 +1071,12 @@
       "scan_mode": "live",
       "lookback_days": 1
     },
-    "saved_at": 1785756246949
+    "saved_at": 1785756246949,
+    "monitor": {
+      "enabled": true,
+      "every_sec": 900,
+      "whatsapp": true,
+      "auto_trade": false
+    }
   }
 ]
